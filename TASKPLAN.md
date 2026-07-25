@@ -36,12 +36,12 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 ## Phase 4 — AI Decision Engine (Rule-Based)
 
-- [ ] Tulis function `evaluateReadiness(readings: SensorReading[]): AIDecisionResult` di `lib/ai/`
-- [ ] Implementasi logic threshold: suhu 25–35°C, pH 6–7, kelembapan 60–65%
-- [ ] Implementasi moving average & rate-of-change untuk smoothing data noise
-- [ ] Implementasi anomaly detection (lonjakan suhu tiba-tiba, drop pH drastis)
-- [ ] Buat unit test untuk skenario: media belum siap, media siap, kondisi anomali
-- [ ] Hubungkan AI engine ke pipeline: setiap data sensor baru masuk → jalankan evaluasi → simpan ke `AIDecision`
+- [x] Tulis function `evaluateReadiness(readings: SensorReadingInput[]): AIDecisionResult` di `lib/ai/evaluateReadiness.ts`
+- [x] Implementasi logic threshold: suhu 25–35°C, pH 6–7, kelembapan 60–65%
+- [x] Implementasi moving average & rate-of-change untuk smoothing data noise (window 5 pembacaan, dibandingkan dengan window sebelumnya untuk menilai stabil/masih trending)
+- [x] Implementasi anomaly detection (lonjakan suhu tiba-tiba, drop pH drastis) — deteksi delta antar dua pembacaan berurutan
+- [x] Buat unit test untuk skenario: media belum siap, media siap, dalam proses, kondisi anomali (suhu & pH) — `lib/ai/evaluateReadiness.test.ts`, 8 test lolos via `npm run test` (Vitest)
+- [x] Hubungkan AI engine ke pipeline: setiap data sensor baru masuk → jalankan evaluasi → simpan ke `AIDecision` — `lib/sensors/ingest.ts` jadi titik masuk tunggal (dipakai simulator sekarang, MQTT bridge nanti); anomali & transisi ke siap sterilisasi otomatis bikin `Alert` dan update `Batch.status` ke `READY`
 
 ## Phase 5 — Dashboard UI
 

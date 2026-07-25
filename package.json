@@ -9,7 +9,8 @@
     "lint": "next lint",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "simulate": "tsx scripts/simulate.ts"
+    "simulate": "tsx scripts/simulate.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.0",
@@ -33,6 +34,7 @@
     "prisma": "^7.9.0",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.23.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

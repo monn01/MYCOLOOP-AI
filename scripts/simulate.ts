@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { prisma } from "../lib/db/client";
 import { getOrCreateDefaultUser } from "../lib/db/default-user";
+import { ingestSensorReading } from "../lib/sensors/ingest";
 import { baseReadingAt, applyAnomaly, DEFAULT_DURATION_HOURS, type AnomalyType } from "../lib/simulator/curve";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -79,13 +80,15 @@ async function getOrCreateRunningBatch(batchId?: string) {
 }
 
 /** Lanjutkan progress dari pembacaan terakhir batch ini, kalau ada. */
-async function resolveStartingProgressHours(batchId: string, startTime: Date) {
+async function resolveStartingProgressHours(batchId: string, startTime: Date, tickHours: number) {
   const last = await prisma.sensorReading.findFirst({
     where: { batchId },
     orderBy: { timestamp: "desc" },
   });
   if (!last) return 0;
-  return (last.timestamp.getTime() - startTime.getTime()) / HOUR_MS;
+  // +tickHours supaya resume tidak menyisipkan reading duplikat persis di
+  // jam yang sama dengan pembacaan terakhir sebelum simulator dihentikan.
+  return (last.timestamp.getTime() - startTime.getTime()) / HOUR_MS + tickHours;
 }
 
 function delay(ms: number) {
@@ -96,7 +99,11 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   const batch = await getOrCreateRunningBatch(options.batchId);
 
-  let elapsedHours = await resolveStartingProgressHours(batch.id, batch.startTime);
+  let elapsedHours = await resolveStartingProgressHours(
+    batch.id,
+    batch.startTime,
+    options.speedMinutesPerTick / 60
+  );
   const remainingHours = Math.max(options.durationHours - elapsedHours, 0);
   const estimatedTicks = Math.ceil((remainingHours * 60) / options.speedMinutesPerTick);
   const anomalyAtTick = options.anomalyAtTick ?? Math.floor(estimatedTicks / 2);
@@ -130,19 +137,21 @@ async function main() {
       console.log(`>> Anomali disuntikkan (${options.anomaly})`);
     }
 
-    await prisma.sensorReading.create({
-      data: {
-        batchId: batch.id,
-        timestamp: new Date(batch.startTime.getTime() + elapsedHours * HOUR_MS),
-        suhu: point.suhu,
-        kelembapan: point.kelembapan,
-        ph: point.ph,
-      },
+    const { decision, alert } = await ingestSensorReading({
+      batchId: batch.id,
+      timestamp: new Date(batch.startTime.getTime() + elapsedHours * HOUR_MS),
+      suhu: point.suhu,
+      kelembapan: point.kelembapan,
+      ph: point.ph,
     });
 
     console.log(
-      `[tick ${tick}] jam-ke-${elapsedHours.toFixed(1)} suhu=${point.suhu}°C kelembapan=${point.kelembapan}% pH=${point.ph}`
+      `[tick ${tick}] jam-ke-${elapsedHours.toFixed(1)} suhu=${point.suhu}°C kelembapan=${point.kelembapan}% pH=${point.ph} ` +
+        `-> AI: ${decision.status} (${(decision.confidence * 100).toFixed(0)}%)`
     );
+    if (alert) {
+      console.log(`   >> Alert dibuat: [${alert.type}] ${alert.message}`);
+    }
 
     elapsedHours += options.speedMinutesPerTick / 60;
     tick++;
