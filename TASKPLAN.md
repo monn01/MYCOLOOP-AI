@@ -21,10 +21,10 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 ## Phase 2 — Sensor Data Simulator
 
-- [ ] Buat script simulator (Node.js standalone atau cron job Next.js) yang generate data suhu/kelembapan/pH dengan kurva realistis (basah & panas di awal → stabil menjelang siap)
-- [ ] Simulator insert data ke `SensorReading` tiap beberapa detik untuk batch yang sedang `running`
-- [ ] Tambahkan mode simulasi anomali (lonjakan suhu, drop pH) untuk testing alert
-- [ ] Dokumentasikan cara menjalankan simulator (`npm run simulate`)
+- [x] Buat script simulator (`scripts/simulate.ts`, Node.js standalone) yang generate data suhu/kelembapan/pH dengan kurva realistis (basah & panas di awal → stabil menjelang siap), kurva dibagi dengan `prisma/seed.ts` lewat `lib/simulator/curve.ts`
+- [x] Simulator insert data ke `SensorReading` tiap beberapa detik (`--interval`) untuk batch yang sedang `RUNNING`, dengan progress yang bisa dipercepat (`--speed`) dan lanjut otomatis kalau dihentikan/dijalankan ulang
+- [x] Tambahkan mode simulasi anomali (`--anomaly suhu|ph`) untuk testing alert
+- [x] Dokumentasikan cara menjalankan simulator (`npm run simulate`) — lihat README.md
 
 ## Phase 3 — Backend: API & Real-time
 

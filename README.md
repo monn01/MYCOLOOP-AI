@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MYCOLOOP-AI
 
-## Getting Started
+Software untuk mengontrol dan memonitor Smart Pre-Conditioning Chamber produksi baglog jamur tiram. Lihat `PRD.md` untuk detail produk dan `TASKPLAN.md` untuk urutan pengerjaan per phase. Konvensi kerja untuk Claude Code ada di `CLAUDE.md`.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
+cp .env.example .env   # isi DATABASE_URL, NEXTAUTH_SECRET, dst
+npx prisma migrate dev # buat schema di database
+npm run db:seed        # isi data dummy (2 user, 3 batch contoh)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Untuk inspeksi database secara visual: `npm run db:studio`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Sensor Data Simulator
 
-## Learn More
+Karena chamber fisik belum tentu siap saat development (lihat PRD.md §9 dan §12), `scripts/simulate.ts` men-generate data suhu/kelembapan/pH dengan kurva realistis (basah & panas di awal → stabil menjelang siap sterilisasi) dan menginsert-nya ke `SensorReading` secara berkala.
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run simulate
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Tanpa argumen, simulator akan memakai batch dengan status `RUNNING` yang paling baru (atau membuat batch baru otomatis kalau tidak ada), lalu insert satu pembacaan sensor setiap 5 detik.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Opsi yang tersedia:
 
-## Deploy on Vercel
+| Flag | Default | Keterangan |
+|---|---|---|
+| `--batch <id>` | batch `RUNNING` terbaru | Target batch tertentu (harus berstatus `RUNNING`) |
+| `--interval <detik>` | `5` | Jeda nyata antar-insert |
+| `--speed <menit>` | `30` | Berapa menit **simulasi** yang maju tiap satu insert — dipakai untuk mempercepat demo tanpa perlu menunggu 48 jam sungguhan |
+| `--duration <jam>` | `48` | Total durasi pre-conditioning yang disimulasikan; simulator berhenti otomatis saat tercapai |
+| `--anomaly <suhu\|ph>` | – | Suntikkan satu anomali (lonjakan suhu / drop pH) untuk testing alert |
+| `--anomaly-tick <n>` | tengah proses | Tick keberapa anomali disuntikkan |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Contoh: demo 48 jam proses dipadatkan jadi ~4 menit nyata, dengan satu lonjakan suhu di tengah jalan:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run simulate -- --speed 60 --interval 5 --anomaly suhu
+```
+
+Timestamp yang disimpan mengikuti jam simulasi (`startTime + progress`), bukan jam nyata — supaya grafik time-series tetap merepresentasikan garis waktu batch meski dipercepat, dan supaya simulator bisa dihentikan (Ctrl+C) lalu dilanjut lagi tanpa kehilangan progress.

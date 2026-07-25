@@ -2,27 +2,10 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../lib/generated/prisma/client";
+import { baseReadingAt } from "../lib/simulator/curve";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
-
-/**
- * Kurva pre-conditioning realistis: basah & panas di awal, menurun & stabil
- * menjelang siap sterilisasi (lihat PRD.md #2 dan TASKPLAN.md Phase 2).
- */
-function readingAt(hourIntoProcess: number, totalHours: number) {
-  const progress = Math.min(hourIntoProcess / totalHours, 1);
-
-  const suhu = 38 - 8 * progress + (Math.random() - 0.5) * 0.8;
-  const kelembapan = 75 - 12 * progress + (Math.random() - 0.5) * 1.5;
-  const ph = 5.4 + 1.4 * progress + (Math.random() - 0.5) * 0.1;
-
-  return {
-    suhu: Number(suhu.toFixed(2)),
-    kelembapan: Number(kelembapan.toFixed(2)),
-    ph: Number(ph.toFixed(2)),
-  };
-}
 
 function decisionForProgress(progress: number) {
   if (progress < 0.4) {
@@ -125,7 +108,7 @@ async function main() {
     for (let i = 0; i <= steps; i++) {
       const hourIntoProcess = (i * stepMinutes) / 60;
       const timestamp = new Date(start.getTime() + hourIntoProcess * HOUR);
-      const { suhu, kelembapan, ph } = readingAt(hourIntoProcess, totalHours);
+      const { suhu, kelembapan, ph } = baseReadingAt(hourIntoProcess, totalHours);
 
       await prisma.sensorReading.create({
         data: { batchId: batch.id, timestamp, suhu, kelembapan, ph },
