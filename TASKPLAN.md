@@ -45,7 +45,7 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 ## Phase 5 — Dashboard UI
 
-- [ ] Setup NextAuth untuk login operator
+- [x] Setup NextAuth untuk login operator — Credentials provider (bcrypt vs `User.password`), JWT session dengan `id`/`role`, halaman `/login` custom, middleware proteksi semua halaman non-API. Dites end-to-end (login salah/benar, session, logout) via curl memakai user hasil seed
 - [ ] Halaman Dashboard Utama: status chamber, summary cards, alert terbaru
 - [ ] Halaman Pre-Conditioning Monitor: grafik time-series (Recharts), threshold line, status AI decision live
 - [ ] Halaman Riwayat Produksi: daftar batch, detail per-batch, statistik agregat
