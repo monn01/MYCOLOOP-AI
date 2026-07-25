@@ -6,11 +6,11 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 ## Phase 0 — Project Setup
 
-- [ ] Scaffold project Next.js 14 (App Router) + TypeScript + Tailwind
-- [ ] Setup PostgreSQL (Neon/Supabase untuk dev) + koneksi Prisma
-- [ ] Setup struktur folder: `app/`, `lib/`, `components/`, `prisma/`
-- [ ] Setup `CLAUDE.md` untuk konteks project (stack, konvensi, struktur)
-- [ ] Init git repo, `.env.example`
+- [x] Scaffold project Next.js 14 (App Router) + TypeScript + Tailwind
+- [x] Setup koneksi Prisma (skeleton siap; provisioning DB Neon/Supabase aktual masih perlu dilakukan user — isi `DATABASE_URL` di `.env`)
+- [x] Setup struktur folder: `app/`, `lib/`, `components/`, `prisma/`
+- [x] Setup `CLAUDE.md` untuk konteks project (stack, konvensi, struktur)
+- [x] Init git repo, `.env.example`
 
 ## Phase 1 — Data Model (Prisma Schema)
 
