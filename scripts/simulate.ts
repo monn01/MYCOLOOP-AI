@@ -1,10 +1,7 @@
 import "dotenv/config";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../lib/generated/prisma/client";
+import { prisma } from "../lib/db/client";
+import { getOrCreateDefaultUser } from "../lib/db/default-user";
 import { baseReadingAt, applyAnomaly, DEFAULT_DURATION_HOURS, type AnomalyType } from "../lib/simulator/curve";
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -70,17 +67,7 @@ async function getOrCreateRunningBatch(batchId?: string) {
   });
   if (existing) return existing;
 
-  let user = await prisma.user.findFirst();
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        name: "Simulator",
-        email: "simulator@mycoloop.ai",
-        password: "simulator-account-no-login",
-        role: "OPERATOR",
-      },
-    });
-  }
+  const user = await getOrCreateDefaultUser();
 
   return prisma.batch.create({
     data: {

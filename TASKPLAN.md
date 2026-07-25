@@ -28,11 +28,11 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 ## Phase 3 — Backend: API & Real-time
 
-- [ ] Buat API route CRUD `Batch` (create, get, list, update status)
-- [ ] Buat API route GET `SensorReading` (dengan filter batchId, range waktu)
-- [ ] Setup WebSocket/SSE endpoint untuk push data sensor real-time ke client
-- [ ] (Untuk nanti) siapkan MQTT subscriber bridge — bisa distub dulu, diisi real MQTT client di Phase 5
-- [ ] Testing endpoint dengan data dari simulator Phase 2
+- [x] Buat API route CRUD `Batch` (create, get, list, update status) — `app/api/batches/route.ts` (GET list + filter status/limit, POST create) dan `app/api/batches/[id]/route.ts` (GET detail, PATCH status/formula/endTime)
+- [x] Buat API route GET `SensorReading` (dengan filter batchId, range waktu) — `app/api/sensor-readings/route.ts`, mendukung `batchId` (wajib), `from`/`to`, `limit`
+- [x] Setup WebSocket/SSE endpoint untuk push data sensor real-time ke client — `app/api/stream/sensor-readings/route.ts`, polling DB tiap 2 detik lalu push lewat SSE
+- [x] (Untuk nanti) siapkan MQTT subscriber bridge — `lib/mqtt/bridge.ts` (stub inert, diisi real MQTT client di Phase 6)
+- [x] Testing endpoint dengan data dari simulator Phase 2 — dicek manual via curl (list/filter/create/patch/404/400) dan SSE live-tested sambil `npm run simulate` jalan (event `reading` muncul persis saat simulator insert)
 
 ## Phase 4 — AI Decision Engine (Rule-Based)
 

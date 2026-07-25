@@ -1,11 +1,7 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../lib/generated/prisma/client";
+import { prisma } from "../lib/db/client";
 import { baseReadingAt } from "../lib/simulator/curve";
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
 
 function decisionForProgress(progress: number) {
   if (progress < 0.4) {
