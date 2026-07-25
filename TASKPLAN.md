@@ -2,6 +2,8 @@
 
 Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fisik. Phase 0–4 sepenuhnya bisa dikerjakan lewat Claude Code tanpa hardware. Phase 5 baru butuh ESP32 fisik.
 
+> **Konteks scope:** MYCOLOOP-AI punya 3 stage pipeline produksi (Smart Mixing → Smart Pre-Conditioning → Smart Incubation Monitoring). Seluruh TASKPLAN ini — Phase 0 sampai Phase 8 — scope-nya cuma **Stage 2 (Smart Pre-Conditioning)**. Stage 1 dan Stage 3 belum punya TASKPLAN/PRD sendiri; model data (`Batch.stage`) sudah disiapkan forward-compatible untuk itu, tapi belum ada task pengerjaannya di sini. Detail lihat `PRD.md` §1.1.
+
 ---
 
 ## Phase 0 — Project Setup

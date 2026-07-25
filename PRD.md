@@ -6,6 +6,16 @@ MYCOLOOP-AI adalah sistem software yang mengontrol dan memonitor **Smart Pre-Con
 
 Dokumen ini fokus pada scope software (dashboard, backend, AI decision logic, integrasi IoT). Alat fisik (mixer, shredder, chamber) di luar scope dokumen ini.
 
+## 1.1 Posisi dalam Pipeline MYCOLOOP-AI
+
+Produksi baglog jamur tiram di MYCOLOOP-AI berjalan lewat **3 stage**:
+
+1. **Smart Mixing** (alat fisik) — pencacahan limbah jagung + pencampuran otomatis, dengan IoT monitoring bahan baku.
+2. **Smart Pre-Conditioning** — *dokumen ini*. Chamber dengan sensor pH/suhu/kelembapan + AI decision agent yang menentukan kapan media siap sterilisasi. Ini hero feature software karena paling novel (condition-based, bukan time-based).
+3. **Smart Incubation Monitoring** — setelah sterilisasi + inokulasi, IoT monitor ruang inkubasi + computer vision (YOLOv8) untuk deteksi kontaminasi dini.
+
+**Scope PRD ini murni Stage 2.** Stage 1 dan Stage 3 di luar scope MVP software ini (lihat §5 Non-Goals) — belum ada dokumen PRD/TASKPLAN terpisah untuk keduanya. Supaya data Stage 2 tidak perlu migrasi besar saat Stage 1/3 mulai dikerjakan, model data (`Batch`, lihat §8) sudah diberi field `stage` yang secara default bernilai "pre-conditioning" — detail teknis di `prisma/schema.prisma`.
+
 ## 2. Masalah yang Diselesaikan
 
 Proses pre-conditioning baglog konvensional mengandalkan waktu tetap (±48 jam) tanpa parameter objektif. Akibatnya: waktu produksi tidak efisien, risiko kontaminasi tinggi, dan kualitas tidak konsisten antar-batch. Software ini menyediakan visibilitas real-time dan pengambilan keputusan otomatis berbasis data untuk mengatasi masalah tersebut.
@@ -25,7 +35,8 @@ Proses pre-conditioning baglog konvensional mengandalkan waktu tetap (±48 jam) 
 
 ## 5. Non-Goals (Di Luar Scope Awal)
 
-- Tidak membangun computer vision untuk deteksi kontaminasi visual (YOLOv8) di MVP — jadi roadmap Phase 2.
+- Tidak membangun software untuk Stage 1 (Smart Mixing) — lihat §1.1.
+- Tidak membangun software untuk Stage 3 (Smart Incubation Monitoring), termasuk computer vision deteksi kontaminasi visual (YOLOv8) — roadmap terpisah setelah Stage 2 selesai, lihat §1.1.
 - Tidak membangun native mobile app — cukup responsive web dashboard.
 - Tidak membangun multi-tenant SaaS — MVP untuk 1 unit chamber/organisasi dulu.
 
@@ -67,7 +78,7 @@ Lima layer:
 
 ## 8. Model Data (Ringkasan)
 
-- `Batch` — id, startTime, endTime, status, formula, createdBy
+- `Batch` — id, startTime, endTime, status, formula, createdBy, **stage** (default "pre-conditioning" — field forward-compatible untuk Stage 1/3, lihat §1.1; software ini hanya pernah membuat/membaca batch dengan stage ini)
 - `SensorReading` — batchId, timestamp, suhu, kelembapan, pH
 - `AIDecision` — batchId, timestamp, status, confidence, reasoning
 - `Alert` — batchId, timestamp, type (anomaly/ready), message, resolved

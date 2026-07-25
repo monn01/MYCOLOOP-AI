@@ -33,6 +33,16 @@ enum AlertType {
   READY
 }
 
+/// Tiga stage pipeline fisik MYCOLOOP-AI (lihat PRD.md §1.1). Software ini
+/// (Phase 0-8 di TASKPLAN.md) hanya pernah membuat/membaca batch berstage
+/// PRE_CONDITIONING — MIXING dan INCUBATION disiapkan di sini supaya skema
+/// tidak perlu migrasi besar saat software untuk stage itu mulai dikerjakan.
+enum PipelineStage {
+  MIXING
+  PRE_CONDITIONING
+  INCUBATION
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -46,13 +56,14 @@ model User {
 }
 
 model Batch {
-  id        String      @id @default(cuid())
-  startTime DateTime    @default(now())
+  id        String        @id @default(cuid())
+  startTime DateTime      @default(now())
   endTime   DateTime?
-  status    BatchStatus @default(RUNNING)
+  status    BatchStatus   @default(RUNNING)
+  stage     PipelineStage @default(PRE_CONDITIONING)
   formula   String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   createdById String
   createdBy   User   @relation(fields: [createdById], references: [id])
@@ -62,6 +73,7 @@ model Batch {
   alerts         Alert[]
 
   @@index([status])
+  @@index([stage])
 }
 
 model SensorReading {
