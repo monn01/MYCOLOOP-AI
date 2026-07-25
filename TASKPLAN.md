@@ -14,10 +14,10 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 ## Phase 1 — Data Model (Prisma Schema)
 
-- [ ] Definisikan model `Batch`, `SensorReading`, `AIDecision`, `Alert`, `User`
-- [ ] Jalankan migrasi awal (`prisma migrate dev`)
-- [ ] Buat seed script untuk data dummy (beberapa batch contoh)
-- [ ] Verifikasi schema dengan Prisma Studio
+- [x] Definisikan model `Batch`, `SensorReading`, `AIDecision`, `Alert`, `User`
+- [x] Jalankan migrasi awal (`prisma migrate dev`) — dijalankan ke Postgres lokal via Docker (`mycoloop-postgres` container); ganti `DATABASE_URL` di `.env` saat pindah ke Neon/Supabase
+- [x] Buat seed script untuk data dummy (`prisma/seed.ts`, jalankan via `npm run db:seed`) — 3 batch contoh (COMPLETED/READY/RUNNING) lengkap dengan sensor reading, AI decision, dan alert
+- [x] Verifikasi schema — dicek lewat query count/relasi (2 users, 3 batches, 195 sensor readings, 51 AI decisions, 3 alerts, semua konsisten); buka `npm run db:studio` untuk inspeksi visual manual
 
 ## Phase 2 — Sensor Data Simulator
 

@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../lib/generated/prisma"
@@ -10,4 +8,97 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
+enum BatchStatus {
+  RUNNING
+  READY
+  COMPLETED
+  ABORTED
+}
+
+enum ReadinessStatus {
+  BELUM_SIAP
+  DALAM_PROSES
+  SIAP_STERILISASI
+}
+
+enum AlertType {
+  ANOMALY
+  READY
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(OPERATOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batches Batch[]
+}
+
+model Batch {
+  id        String      @id @default(cuid())
+  startTime DateTime    @default(now())
+  endTime   DateTime?
+  status    BatchStatus @default(RUNNING)
+  formula   String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  sensorReadings SensorReading[]
+  aiDecisions    AIDecision[]
+  alerts         Alert[]
+
+  @@index([status])
+}
+
+model SensorReading {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  suhu       Float
+  kelembapan Float
+  ph         Float
+
+  batchId String
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, timestamp])
+}
+
+model AIDecision {
+  id         String          @id @default(cuid())
+  timestamp  DateTime        @default(now())
+  status     ReadinessStatus
+  confidence Float
+  reasoning  String
+
+  batchId String
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, timestamp])
+}
+
+model Alert {
+  id        String    @id @default(cuid())
+  timestamp DateTime  @default(now())
+  type      AlertType
+  message   String
+  resolved  Boolean   @default(false)
+
+  batchId String
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, resolved])
 }
