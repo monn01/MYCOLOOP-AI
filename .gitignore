@@ -37,3 +37,6 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+
+# graphify knowledge-graph output (local tool cache, regenerate with /graphify)
+/graphify-out

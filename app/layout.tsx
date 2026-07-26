@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
+import { ThemeProvider, THEME_NO_FLASH_SCRIPT } from "@/lib/theme/theme-provider";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -26,10 +27,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_NO_FLASH_SCRIPT }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthSessionProvider>{children}</AuthSessionProvider>
+        <ThemeProvider>
+          <AuthSessionProvider>{children}</AuthSessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

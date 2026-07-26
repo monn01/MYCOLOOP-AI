@@ -60,6 +60,11 @@
     --color-primary-foreground: var(--color-white);
     --color-ring: var(--color-green-500);
 
+    /* Sidebar hijau forest gelap (design.md §2: "tone forest yang lebih
+       dalam dan tenang" — bukan hijau-neon generik). Sengaja tetap gelap
+       di dark mode juga (identitas brand, bukan surface yang ikut tema). */
+    --color-sidebar-bg: var(--color-sage-900);
+
     --color-status-safe: var(--color-green-600);
     --color-status-safe-bg: var(--color-green-50);
     --color-status-safe-border: var(--color-green-200);
@@ -120,5 +125,20 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  @keyframes toast-slide-in {
+    from {
+      transform: translateX(1rem);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-toast-in {
+    animation: toast-slide-in var(--duration-normal) ease-out;
   }
 }

@@ -31,12 +31,13 @@ enum ReadinessStatus {
 enum AlertType {
   ANOMALY
   READY
+  CONTAMINATION
 }
 
-/// Tiga stage pipeline fisik MYCOLOOP-AI (lihat PRD.md §1.1). Software ini
-/// (Phase 0-8 di TASKPLAN.md) hanya pernah membuat/membaca batch berstage
-/// PRE_CONDITIONING — MIXING dan INCUBATION disiapkan di sini supaya skema
-/// tidak perlu migrasi besar saat software untuk stage itu mulai dikerjakan.
+/// Tiga stage pipeline fisik MYCOLOOP-AI (lihat PRD.md §1.1) — Smart Mixing,
+/// Smart Pre-Conditioning, Smart Incubation Monitoring, masing-masing dengan
+/// reading model sendiri (MixingReading/SensorReading/IncubationReading)
+/// karena parameter sensornya berbeda, tapi berbagi Batch/AIDecision/Alert.
 enum PipelineStage {
   MIXING
   PRE_CONDITIONING
@@ -68,20 +69,52 @@ model Batch {
   createdById String
   createdBy   User   @relation(fields: [createdById], references: [id])
 
-  sensorReadings SensorReading[]
-  aiDecisions    AIDecision[]
-  alerts         Alert[]
+  sensorReadings     SensorReading[]
+  mixingReadings     MixingReading[]
+  incubationReadings IncubationReading[]
+  aiDecisions        AIDecision[]
+  alerts             Alert[]
 
   @@index([status])
   @@index([stage])
 }
 
+/// Batch stage PRE_CONDITIONING (lihat PRD.md §7.2/§8) — suhu/kelembapan/pH chamber.
 model SensorReading {
   id         String   @id @default(cuid())
   timestamp  DateTime @default(now())
   suhu       Float
   kelembapan Float
   ph         Float
+
+  batchId String
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, timestamp])
+}
+
+/// Batch stage MIXING (lihat PRD.md §7.5/§8) — kadar air & rasio C:N bahan baku sebelum pre-conditioning.
+model MixingReading {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  kadarAir  Float
+  rasioCN   Float
+  beratKg   Float
+
+  batchId String
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, timestamp])
+}
+
+/// Batch stage INCUBATION (lihat PRD.md §7.6/§8) — kondisi ruang inkubasi pasca sterilisasi+inokulasi.
+model IncubationReading {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  suhu       Float
+  kelembapan Float
+  co2        Float
+  cahaya     Float
 
   batchId String
   batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)

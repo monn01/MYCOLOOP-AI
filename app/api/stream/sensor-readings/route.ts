@@ -24,7 +24,14 @@ export async function GET(request: Request) {
   }
 
   const encoder = new TextEncoder();
-  let lastTimestamp = new Date(0);
+  // Mulai dari saat koneksi dibuka, bukan epoch — histori sudah dibackfill
+  // lewat GET terpisah di client (lib/hooks/use-batch-stream.ts). Kalau mulai
+  // dari epoch, tiap reconnect akan replay seluruh histori batch (duplikat di
+  // state client, dan pada decision/alert bikin toast lama muncul lagi).
+  const connectedAt = new Date();
+  let lastReadingTimestamp = connectedAt;
+  let lastDecisionTimestamp = connectedAt;
+  let lastAlertTimestamp = connectedAt;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -40,13 +47,35 @@ export async function GET(request: Request) {
       const interval = setInterval(async () => {
         try {
           const readings = await prisma.sensorReading.findMany({
-            where: { batchId, timestamp: { gt: lastTimestamp } },
+            where: { batchId, timestamp: { gt: lastReadingTimestamp } },
             orderBy: { timestamp: "asc" },
           });
 
           for (const reading of readings) {
             send("reading", reading);
-            lastTimestamp = reading.timestamp;
+            lastReadingTimestamp = reading.timestamp;
+          }
+
+          // Decision & alert dipush lewat koneksi SSE yang sama supaya
+          // toast/banner (design.md §5.8) bisa reaktif tanpa polling terpisah.
+          const decisions = await prisma.aIDecision.findMany({
+            where: { batchId, timestamp: { gt: lastDecisionTimestamp } },
+            orderBy: { timestamp: "asc" },
+          });
+
+          for (const decision of decisions) {
+            send("decision", decision);
+            lastDecisionTimestamp = decision.timestamp;
+          }
+
+          const alerts = await prisma.alert.findMany({
+            where: { batchId, timestamp: { gt: lastAlertTimestamp } },
+            orderBy: { timestamp: "asc" },
+          });
+
+          for (const alert of alerts) {
+            send("alert", alert);
+            lastAlertTimestamp = alert.timestamp;
           }
         } catch {
           send("error", { message: "Gagal mengambil data sensor terbaru" });
