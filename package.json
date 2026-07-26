@@ -12,6 +12,7 @@
     "simulate": "tsx scripts/simulate.ts",
     "simulate:mixing": "tsx scripts/simulateMixing.ts",
     "simulate:incubation": "tsx scripts/simulateIncubation.ts",
+    "export:training-data": "tsx scripts/exportTrainingData.ts",
     "test": "vitest run"
   },
   "dependencies": {

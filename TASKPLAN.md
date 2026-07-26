@@ -99,7 +99,8 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 ## Phase 7 — Upgrade AI ke Model ML (Roadmap, Setelah Data Batch Terkumpul)
 
-- [ ] Export data historis batch (minimal 20–30 batch) sebagai training set
+- [x] (Prep, belum data nyata) Tooling export siap: `scripts/exportTrainingData.ts` (`npm run export:training-data`) — dump batch selesai (COMPLETED/ABORTED) per stage lengkap readings + riwayat AIDecision + alert + label akhir ke `training-data/*.json` (gitignored). Diverifikasi jalan terhadap data seed/simulasi sekarang, tapi **belum jadi training set final** — tunggu minimal 20-30 batch nyata dari Phase 6 dulu
+- [ ] Export data historis batch (minimal 20–30 batch nyata) sebagai training set
 - [ ] Training model klasifikasi (decision tree/random forest) di Python (scikit-learn)
 - [ ] Bangun microservice FastAPI kecil untuk serving model
 - [ ] Hubungkan Next.js API ke microservice via HTTP call

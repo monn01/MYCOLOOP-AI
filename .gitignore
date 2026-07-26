@@ -40,3 +40,6 @@ next-env.d.ts
 
 # graphify knowledge-graph output (local tool cache, regenerate with /graphify)
 /graphify-out
+
+# Phase 7 prep: exported batch data dumps (regenerate via `npm run export:training-data`)
+/training-data
