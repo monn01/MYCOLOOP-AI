@@ -10,11 +10,13 @@ Dokumen ini fokus pada scope software (dashboard, backend, AI decision logic, in
 
 Produksi baglog jamur tiram di MYCOLOOP-AI berjalan lewat **3 stage**, ketiganya sekarang dalam scope software ini:
 
-1. **Smart Mixing** — pencacahan limbah jagung + pencampuran otomatis. AI menilai kesiapan bahan baku (kadar air, rasio C:N) sebelum dipindahkan ke Pre-Conditioning.
-2. **Smart Pre-Conditioning** — chamber dengan sensor pH/suhu/kelembapan + AI decision agent yang menentukan kapan media siap sterilisasi. Ini hero feature software karena paling novel duluan dikembangkan (condition-based, bukan time-based).
-3. **Smart Incubation Monitoring** — setelah sterilisasi + inokulasi, IoT monitor ruang inkubasi (suhu, kelembapan, CO2, cahaya) + deteksi dini risiko kontaminasi berbasis pola sensor (lihat §5 soal computer vision).
+1. **Smart Mixing** — pencacahan limbah jagung + pencampuran otomatis. Sensor: pH, kekeruhan air, berat bahan. AI di sini **mengontrol aktuator** (solenoid valve tiap saluran bahan) untuk mencapai formula target secara closed-loop, bukan sekadar mengklasifikasi kesiapan (lihat §7.5, §12 soal safety envelope).
+2. **Smart Pre-Conditioning** — chamber dengan sensor suhu ruangan + kelembapan udara + AI decision agent yang menentukan kapan media siap sterilisasi, sekaligus mengontrol fan aerasi (lihat §7.2). Ini hero feature software karena paling novel duluan dikembangkan (condition-based, bukan time-based).
+3. **Smart Incubation Monitoring** — setelah sterilisasi + inokulasi, IoT monitor ruang inkubasi (suhu, kelembapan, CO2, cahaya) **plus kamera** (ESP32-CAM/webcam/Raspberry Pi camera) untuk deteksi dini risiko kontaminasi — AI menggabungkan pola sensor (CO2 naik + kelembapan turun) dengan analisis visual (lihat §5, §7.6).
 
 Ketiganya berbagi satu model `Batch` dengan field `stage` (lihat §8) — field ini awalnya disiapkan forward-compatible sejak Stage 2 pertama dibangun, sekarang direalisasikan penuh untuk Stage 1 dan 3.
+
+> **Catatan arsitektur (2026-07-26):** Set sensor per stage & model otonomi AI direvisi dari rancangan awal — pH pindah dari Pre-Conditioning ke Mixing, sensor Mixing (kadar air/rasio C:N) diganti pH/kekeruhan air/berat, dan AI Mixing naik level dari advisory (klasifikasi kesiapan) jadi closed-loop actuator control (buka/tutup solenoid valve). Kode yang sudah diimplementasikan (schema, evaluator, dashboard Mixing) masih pakai desain lama sampai rework dikerjakan — lihat `TASKPLAN.md` Phase 5b-Rework.
 
 ## 2. Masalah yang Diselesaikan
 
@@ -36,7 +38,7 @@ Proses produksi baglog konvensional di tiap tahap (pencampuran, pre-conditioning
 
 ## 5. Non-Goals (Di Luar Scope Awal)
 
-- Tidak membangun computer vision terlatih (YOLOv8) sungguhan untuk deteksi kontaminasi visual — deteksi dini kontaminasi di MVP murni rule-based dari pola sensor (CO2 + kelembapan, lihat §7.6), konsisten dengan prinsip "rule-based dulu, ML nanti" (§6, §12). Upgrade ke computer vision sungguhan ada di roadmap terpisah setelah data cukup.
+- Tidak membangun model computer vision **terlatih** (CNN/YOLOv8) di awal — kamera Incubasi dianalisis lewat image processing klasik dulu (segmentasi warna/tekstur buat pola kontaminasi khas), digabung dengan deteksi rule-based dari pola sensor (CO2 + kelembapan, lihat §7.6), konsisten dengan prinsip "rule-based/klasik dulu, ML nanti" (§6, §12). Kamera sendiri **sudah masuk MVP** (bukan lagi di luar scope) — yang ditunda cuma model CV terlatih sungguhan, yang butuh data gambar berlabel dan tetap di roadmap terpisah.
 - Tidak membangun native mobile app — cukup responsive web dashboard.
 - Tidak membangun multi-tenant SaaS — MVP untuk 1 unit mixer/chamber/rak inkubasi per organisasi dulu.
 
@@ -44,10 +46,10 @@ Proses produksi baglog konvensional di tiap tahap (pencampuran, pre-conditioning
 
 Lima layer, sama di ketiga stage:
 
-1. **Edge (Firmware)** — ESP32 membaca sensor tiap 30 detik sesuai stage (Mixing: sensor kadar air + estimasi rasio C:N; Pre-Conditioning: DHT22 suhu/kelembapan + sensor pH; Incubation: DHT22 suhu/kelembapan + sensor CO2 + sensor cahaya), publish ke MQTT broker, menerima command kontrol aktuator (fan PWM aerasi di Pre-Conditioning).
+1. **Edge (Firmware)** — ESP32 membaca sensor tiap 30 detik sesuai stage (Mixing: sensor pH + kekeruhan air + berat bahan; Pre-Conditioning: DHT22 suhu/kelembapan; Incubation: DHT22 suhu/kelembapan + sensor CO2 + sensor cahaya + kamera [ESP32-CAM/webcam/Raspberry Pi camera]), publish ke MQTT broker, menerima command kontrol aktuator (fan PWM aerasi di Pre-Conditioning, solenoid valve per saluran bahan di Mixing). Topologi papan (1 ESP32 gabungan vs 3 ESP32 per stage) keputusan tim hardware — tidak mempengaruhi desain software selama tiap topic MQTT tetap di-namespace per stage.
 2. **Komunikasi** — MQTT broker (Mosquitto self-hosted atau HiveMQ Cloud free-tier) sebagai jembatan real-time antara firmware dan backend.
 3. **Backend** — Next.js API routes sebagai MQTT subscriber bridge, REST endpoints, dan WebSocket/SSE server untuk push real-time. Prisma ORM + PostgreSQL sebagai penyimpanan data, satu reading model per stage (lihat §8).
-4. **AI Engine** — Logic klasifikasi kesiapan media per stage, masing-masing rule-based threshold + moving average + deteksi anomali/kontaminasi. Roadmap: model ML (decision tree/random forest) setelah data batch historis terkumpul dari ketiga stage.
+4. **AI Engine** — Logic per stage, rule-based/klasik dulu (bukan ML terlatih di awal): Pre-Conditioning & Incubation tetap klasifikasi kesiapan + threshold + moving average + deteksi anomali/kontaminasi (Incubation ditambah image processing klasik dari kamera, lihat §7.6); Mixing naik level jadi closed-loop control — hasil evaluasi langsung memicu command aktuator (solenoid valve) lewat safety envelope, bukan cuma status buat operator (lihat §7.5, §12). Roadmap: model ML (decision tree/random forest untuk readiness, CV terlatih untuk kontaminasi) setelah data batch historis & gambar berlabel terkumpul.
 5. **Presentasi** — Dashboard Next.js dengan NextAuth (autentikasi operator), sidebar dikelompokkan per stage, grafik real-time (Recharts), status card AI decision per stage.
 
 ## 7. Fitur Utama (MVP)
@@ -73,15 +75,17 @@ Lima layer, sama di ketiga stage:
 - Statistik: rata-rata durasi, tingkat keberhasilan, jumlah batch bulan berjalan
 
 ### 7.5 Smart Mixing
-- Dashboard: kartu metrik kadar air & rasio C:N bahan baku, info berat bahan
-- AI Decision Engine: threshold kadar air 50–60%, rasio C:N 25–35, moving average + deteksi anomali (penurunan kadar air drastis, pergeseran rasio C:N drastis)
-- Transisi otomatis ke status "Siap Dipindahkan" begitu parameter stabil di rentang target — trigger alert `READY` untuk operator memindahkan bahan ke Pre-Conditioning
+- Dashboard: kartu metrik pH, kekeruhan air, berat bahan; log command aktuator (valve mana yang baru dibuka/ditutup & kenapa)
+- AI Control Agent: rule-based state machine — baca pH/kekeruhan/berat, urutkan buka-tutup solenoid valve per saluran bahan (limbah jagung, dedak, kapur, dll.) sampai formula target tercapai; setiap command aktuator lewat safety envelope (batas durasi buka valve, sanity-check sensor sebelum eksekusi, fail-safe posisi tertutup, tombol override manual di dashboard)
+- Transisi otomatis ke status "Siap Dipindahkan" begitu formula tercampur stabil di rentang target — trigger alert `READY` untuk operator memindahkan bahan ke Pre-Conditioning
+- **Catatan implementasi:** kode saat ini (`lib/ai/evaluateMixingReadiness.ts`, schema `MixingReading`) masih pakai desain lama (kadar air/rasio C:N, tanpa aktuasi) — rework tercatat di `TASKPLAN.md` Phase 5b-Rework, belum dikerjakan
 
 ### 7.6 Smart Incubation Monitoring
-- Dashboard: kartu metrik suhu, kelembapan, CO2, cahaya ruang inkubasi
+- Dashboard: kartu metrik suhu, kelembapan, CO2, cahaya ruang inkubasi + snapshot/preview kamera terbaru
 - AI Decision Engine: threshold suhu 22–28°C, kelembapan 70–90%, CO2 500–1500ppm, cahaya 0–50lux (ruang gelap), moving average + deteksi anomali suhu
-- **Deteksi dini kontaminasi (rule-based, bukan computer vision — lihat §5)**: pola lonjakan CO2 bersamaan penurunan kelembapan drastis dalam interval yang sama diklasifikasikan sebagai indikasi risiko kontaminasi, memicu `Alert` bertipe `CONTAMINATION` supaya operator memeriksa baglog secara visual
+- **Deteksi dini kontaminasi (dua sinyal digabung, lihat §5)**: (1) pola sensor — lonjakan CO2 bersamaan penurunan kelembapan drastis dalam interval yang sama (sudah jalan); (2) analisis visual dari kamera (ESP32-CAM/webcam/Raspberry Pi camera) — image processing klasik (segmentasi warna/tekstur) mendeteksi bercak khas kontaminasi. Kedua sinyal independen, AI gabungkan buat kurangi false positive/negative sebelum memicu `Alert` bertipe `CONTAMINATION` — operator tetap wajib konfirmasi visual manual sebelum tindakan
 - Transisi otomatis ke status "Siap Panen" begitu parameter stabil (miselium tumbuh optimal)
+- **Catatan hardware:** ESP32-CAM opsi termurah tapi noisy (akurasi rendah); webcam/Raspberry Pi camera direkomendasikan kalau akurasi deteksi visual jadi prioritas
 
 ### 7.7 Autentikasi & Manajemen User
 - Login operator via NextAuth
@@ -98,14 +102,16 @@ Lima layer, sama di ketiga stage:
 ## 8. Model Data (Ringkasan)
 
 - `Batch` — id, startTime, endTime, status, formula, createdBy, **stage** (`MIXING` / `PRE_CONDITIONING` / `INCUBATION`) — satu model dipakai bersama ketiga stage
-- `SensorReading` — batchId, timestamp, suhu, kelembapan, pH (khusus batch stage `PRE_CONDITIONING`)
-- `MixingReading` — batchId, timestamp, kadarAir, rasioCN, beratKg (khusus batch stage `MIXING`)
+- `SensorReading` — batchId, timestamp, suhu, kelembapan (khusus batch stage `PRE_CONDITIONING`) — **target**: `pH` di-drop dari model ini (pindah ke `MixingReading`); skema saat ini masih menyertakan `pH`, migrasi belum dikerjakan
+- `MixingReading` — batchId, timestamp, pH, kekeruhanAir, beratKg (khusus batch stage `MIXING`) — **target**: ganti dari `kadarAir`/`rasioCN`; skema saat ini masih field lama, migrasi belum dikerjakan
 - `IncubationReading` — batchId, timestamp, suhu, kelembapan, co2, cahaya (khusus batch stage `INCUBATION`)
+- `IncubationImageAnalysis` *(baru, belum diimplementasi)* — batchId, timestamp, imageRef, contaminationScore/label — dipakai bareng `IncubationReading` buat deteksi kontaminasi dua-sinyal (§7.6)
+- `ActuatorCommand` *(baru, belum diimplementasi)* — batchId, timestamp, stage, target (`valve:<nama>`/`fan`), action (`OPEN`/`CLOSE`/`ON`/`OFF`/level), triggeredBy (`AI`/`MANUAL`), reasoning — audit trail tiap kali AI (atau operator) menggerakkan aktuator fisik, dasar buat safety envelope §12
 - `AIDecision` — batchId, timestamp, status (`belum_siap`/`dalam_proses`/status "siap" generik), confidence, reasoning — dipakai bersama ketiga stage, label tampilan per-stage di-map di layer UI (bukan enum terpisah per stage)
 - `Alert` — batchId, timestamp, type (`ANOMALY`/`READY`/`CONTAMINATION`), message, resolved
 - `User` — id, name, email, role
 
-Skema detail ada di `prisma/schema.prisma`.
+Skema detail ada di `prisma/schema.prisma`. Model bertanda "target"/"baru, belum diimplementasi" di atas mencatat arah tujuan (lihat `TASKPLAN.md` Phase 5b-Rework & Phase 6b) — schema Prisma aktual belum diubah.
 
 ## 9. Requirement Non-Fungsional
 
@@ -113,6 +119,7 @@ Skema detail ada di `prisma/schema.prisma`.
 - **Reliability**: data sensor tetap tersimpan meski dashboard offline (backend selalu subscribe MQTT).
 - **Development tanpa hardware**: seluruh software dapat dikembangkan dan diuji menggunakan data simulasi (satu simulator per stage) sebelum alat fisik selesai difabrikasi.
 - **Skalabilitas minimal**: cukup untuk 1-5 unit mixer/chamber/rak inkubasi per instance database di tahap kompetisi.
+- **Safety aktuator**: setiap command aktuator (solenoid valve Mixing, fan Pre-Conditioning) melewati safety envelope (batas durasi, sanity-check sensor, fail-safe closed/off, override manual di dashboard) sebelum dieksekusi firmware — lihat §12.
 
 ## 10. Metrik Keberhasilan (untuk Demo/Kompetisi)
 
@@ -132,8 +139,9 @@ Skema detail ada di `prisma/schema.prisma`.
 | Real-time | MQTT (mqtt.js) + WebSocket/SSE |
 | Grafik | Recharts |
 | Firmware | ESP32 (Arduino/PlatformIO, C++) |
-| AI (MVP) | TypeScript rule-based logic, satu evaluator per stage |
-| AI (Roadmap) | Python (scikit-learn) via microservice FastAPI, dipanggil dari Next.js; computer vision (YOLOv8) untuk kontaminasi Incubation |
+| AI (MVP) | TypeScript rule-based logic, satu evaluator per stage; Mixing juga jadi closed-loop actuator control (lihat §7.5) |
+| AI (Vision, Incubation) | Image processing klasik (OpenCV) dulu untuk analisis kamera; model CV terlatih (CNN/YOLOv8) di roadmap setelah data gambar berlabel cukup |
+| AI (Roadmap) | Python (scikit-learn) via microservice FastAPI, dipanggil dari Next.js, untuk readiness classifier ML setelah data batch historis cukup |
 | AI Assistant | Google Gemini API (REST langsung, tanpa SDK), lihat §7.8 |
 
 ## 12. Risiko & Mitigasi
@@ -142,7 +150,9 @@ Skema detail ada di `prisma/schema.prisma`.
 |---|---|
 | Alat fisik (mixer/chamber/rak inkubasi) belum selesai saat software perlu didemo | Bangun sensor data simulator per stage agar software bisa dites independen dari hardware |
 | Model AI belum punya data training | Mulai dengan rule-based di ketiga stage, upgrade ke ML setelah data batch terkumpul dari uji coba |
-| Deteksi kontaminasi rule-based (bukan computer vision) bisa false positive/negative | Alert `CONTAMINATION` selalu minta konfirmasi visual manual operator, bukan tindakan otomatis; upgrade ke YOLOv8 sungguhan di roadmap setelah cukup data berlabel |
+| Deteksi kontaminasi (sensor + visual klasik) bisa false positive/negative | Alert `CONTAMINATION` selalu minta konfirmasi visual manual operator, bukan tindakan otomatis; upgrade ke model CV terlatih sungguhan di roadmap setelah cukup data gambar berlabel |
+| AI mengontrol aktuator fisik (valve/fan) otomatis bisa salah eksekusi & merusak batch/alat | Safety envelope wajib (batas durasi buka valve, sanity-check sensor, fail-safe closed/off, override manual di dashboard) sebelum command aktuator dieksekusi firmware; semua command tercatat di `ActuatorCommand` buat audit |
+| ESP32-CAM murah tapi noisy, bisa bikin analisis visual tidak akurat | Rekomendasikan webcam/Raspberry Pi camera kalau akurasi jadi prioritas; hasil visual jadi sinyal sekunder digabung sensor, bukan satu-satunya penentu alert kontaminasi |
 | MQTT broker down/koneksi ESP32 putus | Backend tetap simpan data terakhir, dashboard tampilkan status "disconnected" |
 | AI Assistant bisa berhalusinasi / kasih saran keliru | Assistant read-only (tidak bisa eksekusi aksi), system prompt eksplisit minta jujur kalau data tidak cukup; operator tetap validasi manual sebelum bertindak |
 | `GEMINI_API_KEY` belum diset / kuota habis | Endpoint mengembalikan error jelas ke UI, sisa dashboard tetap berfungsi normal (assistant bukan dependency kritis) |
