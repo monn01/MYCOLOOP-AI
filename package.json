@@ -13,11 +13,14 @@
     "simulate:mixing": "tsx scripts/simulateMixing.ts",
     "simulate:incubation": "tsx scripts/simulateIncubation.ts",
     "export:training-data": "tsx scripts/exportTrainingData.ts",
+    "mqtt:bridge": "tsx scripts/mqttBridge.ts",
+    "mock:esp32": "tsx scripts/mockEsp32.ts",
     "test": "vitest run"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",
+    "mqtt": "^5.15.2",
     "next": "14.2.35",
     "next-auth": "^4.24.15",
     "pg": "^8.22.0",
