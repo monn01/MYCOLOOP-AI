@@ -13,14 +13,23 @@ export interface SensorReadingInput {
 }
 
 /**
- * Riset literatur publik 2026-07-26 (lihat PRD.md §13):
+ * Riset literatur publik 2026-07-26, diklarifikasi & disetujui tim (lihat PRD.md §13):
  * - kelembapan: 60-65% cocok literatur persiapan substrat Pleurotus
  *   ostreatus (initial moisture 55-65%/60-65% di beberapa studi) — tidak diubah.
- * - suhu: BELUM DIUBAH — masih ambigu proses fisik apa yang direpresentasikan
- *   stage ini. Kalau curing/pengkondisian sebelum sterilisasi, 25-35°C (suhu
- *   ruang) masuk akal. Kalau dimaksudkan pasteurisasi aktif, literatur bilang
- *   butuh 60-77°C selama 1-2 jam — beda jauh dari threshold ini. Perlu
- *   klarifikasi tim sebelum angka ini diubah, lihat PRD.md §13.
+ * - suhu: 25-35°C DIKONFIRMASI TETAP (bukan pasteurisasi aktif). Stage ini
+ *   adalah curing/pengkondisian mesofilik sebelum sterilisasi, bukan proses
+ *   pasteurisasi itu sendiri — disimpulkan dari desain sistem sendiri, bukan
+ *   cuma literatur eksternal: (1) nama & tujuan stage "menentukan kapan media
+ *   siap STERILISASI" (PRD.md §1.1) berarti sterilisasi adalah langkah
+ *   terpisah SETELAHNYA, bukan proses ini sendiri; (2) aktuator stage ini
+ *   fan aerasi, bukan pemanas — cocok komposting/curing yang butuh oksigen,
+ *   bukan pasteurisasi yang butuh panas terkontrol; (3) sensor suhu mengukur
+ *   suhu RUANGAN, bukan suhu inti substrat yang wajib dipantau saat
+ *   pasteurisasi; (4) durasi default simulator 48 jam (lib/simulator/curve.ts
+ *   DEFAULT_DURATION_HOURS) cocok skala waktu curing multi-hari, sangat tidak
+ *   cocok pasteurisasi yang literatur bilang cuma 1-2 jam. Pasteurisasi
+ *   sungguhan (60-77°C) tetap di luar scope stage ini kalau memang dilakukan
+ *   terpisah di alat lain.
  */
 export const THRESHOLDS = {
   suhu: { min: 25, max: 35 },
