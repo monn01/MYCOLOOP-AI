@@ -23,7 +23,7 @@ function decisionForProgress(progress: number) {
   return {
     status: "SIAP_STERILISASI" as const,
     confidence: 0.9 + Math.random() * 0.09,
-    reasoning: "Suhu 25-35°C, pH 6-7, kelembapan 60-65% tercapai dan stabil selama beberapa pembacaan berturut-turut.",
+    reasoning: "Suhu 25-35°C, kelembapan 60-65% tercapai dan stabil selama beberapa pembacaan berturut-turut.",
   };
 }
 
@@ -32,7 +32,7 @@ function mixingDecisionForProgress(progress: number) {
     return {
       status: "BELUM_SIAP" as const,
       confidence: 0.6 + progress * 0.3,
-      reasoning: "Kadar air dan rasio C:N masih tinggi, bahan baku baru mulai dicampur.",
+      reasoning: "pH masih asam dan kekeruhan air rendah, bahan baku baru mulai dicampur.",
     };
   }
   if (progress < 0.85) {
@@ -45,7 +45,7 @@ function mixingDecisionForProgress(progress: number) {
   return {
     status: "SIAP_STERILISASI" as const,
     confidence: 0.9 + Math.random() * 0.09,
-    reasoning: "Kadar air 50-60%, rasio C:N 25-35 tercapai dan stabil, siap dipindahkan ke Smart Pre-Conditioning.",
+    reasoning: "pH 6.0-7.0, kekeruhan air 200-500 NTU tercapai dan stabil, siap dipindahkan ke Smart Pre-Conditioning.",
   };
 }
 
@@ -150,10 +150,10 @@ async function main() {
     for (let i = 0; i <= steps; i++) {
       const hourIntoProcess = (i * stepMinutes) / 60;
       const timestamp = new Date(start.getTime() + hourIntoProcess * HOUR);
-      const { suhu, kelembapan, ph } = baseReadingAt(hourIntoProcess, totalHours);
+      const { suhu, kelembapan } = baseReadingAt(hourIntoProcess, totalHours);
 
       await prisma.sensorReading.create({
-        data: { batchId: batch.id, timestamp, suhu, kelembapan, ph },
+        data: { batchId: batch.id, timestamp, suhu, kelembapan },
       });
 
       // Simpan AI decision tiap 2 jam agar tidak terlalu padat
@@ -244,10 +244,10 @@ async function main() {
     for (let i = 0; i <= steps; i++) {
       const hourIntoProcess = (i * stepMinutes) / 60;
       const timestamp = new Date(start.getTime() + hourIntoProcess * HOUR);
-      const { kadarAir, rasioCN, beratKg } = baseMixingReadingAt(hourIntoProcess, totalHours);
+      const { pH, kekeruhanAir, beratKg } = baseMixingReadingAt(hourIntoProcess, totalHours);
 
       await prisma.mixingReading.create({
-        data: { batchId: batch.id, timestamp, kadarAir, rasioCN, beratKg },
+        data: { batchId: batch.id, timestamp, pH, kekeruhanAir, beratKg },
       });
 
       if (i % 4 === 0) {
@@ -275,6 +275,31 @@ async function main() {
       resolved: true,
     },
   });
+
+  // Demo log command valve (lihat PRD.md §7.5/§12) — urutan buka/tutup
+  // saluran limbah jagung -> dedak -> kapur untuk batch mixing yang sudah
+  // selesai, supaya UI log command valve punya data contoh.
+  const valveDemoSteps: Array<{ target: string; action: "OPEN" | "CLOSE"; offsetHours: number; reasoning: string }> = [
+    { target: "valve:limbah_jagung", action: "OPEN", offsetHours: 0, reasoning: "Mengisi saluran Limbah Jagung: berat total 0.0kg dari target 100kg." },
+    { target: "valve:limbah_jagung", action: "CLOSE", offsetHours: 1.5, reasoning: "Mengisi saluran Dedak: berat total 72.0kg dari target 100kg." },
+    { target: "valve:dedak", action: "OPEN", offsetHours: 1.5, reasoning: "Mengisi saluran Dedak: berat total 72.0kg dari target 100kg." },
+    { target: "valve:dedak", action: "CLOSE", offsetHours: 3, reasoning: "Mengisi saluran Kapur: berat total 91.0kg dari target 100kg." },
+    { target: "valve:kapur", action: "OPEN", offsetHours: 3, reasoning: "Mengisi saluran Kapur: berat total 91.0kg dari target 100kg." },
+    { target: "valve:kapur", action: "CLOSE", offsetHours: 3.8, reasoning: "Formula tercampur: berat 100.0kg, pH dan kekeruhan air di rentang target dan stabil — siap dipindahkan ke Smart Pre-Conditioning." },
+  ];
+  for (const step of valveDemoSteps) {
+    await prisma.actuatorCommand.create({
+      data: {
+        batchId: batchMixingCompleted.id,
+        timestamp: new Date(mixingCompletedStart.getTime() + step.offsetHours * HOUR),
+        stage: "MIXING",
+        target: step.target,
+        action: step.action,
+        triggeredBy: "AI",
+        reasoning: step.reasoning,
+      },
+    });
+  }
 
   // === Smart Incubation Monitoring (Stage 3) ===
   const incubationCompletedTotalHours = 72;

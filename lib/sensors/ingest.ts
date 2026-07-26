@@ -11,7 +11,6 @@ export interface IngestSensorReadingInput {
   timestamp?: Date;
   suhu: number;
   kelembapan: number;
-  ph: number;
 }
 
 /**
@@ -27,7 +26,6 @@ export async function ingestSensorReading(input: IngestSensorReadingInput) {
       timestamp: input.timestamp ?? new Date(),
       suhu: input.suhu,
       kelembapan: input.kelembapan,
-      ph: input.ph,
     },
   });
 

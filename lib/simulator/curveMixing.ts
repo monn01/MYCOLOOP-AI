@@ -1,37 +1,37 @@
 export const DEFAULT_MIXING_DURATION_HOURS = 4;
 
 export interface MixingPoint {
-  kadarAir: number;
-  rasioCN: number;
+  pH: number;
+  kekeruhanAir: number;
   beratKg: number;
 }
 
 /**
- * Kurva Smart Mixing realistis: bahan baku mentah (kadar air & rasio C:N
- * tinggi) → homogen & di rentang target menjelang siap dipindah ke
- * Pre-Conditioning (lihat PRD.md §7.5). Proses jauh lebih singkat dari
- * pre-conditioning (jam, bukan hari) karena murni pencacahan+pencampuran.
+ * Kurva Smart Mixing realistis: bahan mentah asam & keruh rendah di awal
+ * (limbah jagung segar) → mendekati netral & kekeruhan naik ke rentang target
+ * seiring dedak+kapur ditambahkan (lihat PRD.md §7.5). `targetWeightKg` sama
+ * dengan `MIXING_TARGET_TOTAL_WEIGHT_KG` di lib/ai/evaluateMixingReadiness.ts.
  */
 export function baseMixingReadingAt(hourIntoProcess: number, totalHours: number, targetWeightKg = 100): MixingPoint {
   const progress = Math.min(Math.max(hourIntoProcess / totalHours, 0), 1);
 
-  const kadarAir = 72 - 17 * progress + (Math.random() - 0.5) * 1.2;
-  const rasioCN = 46 - 16 * progress + (Math.random() - 0.5) * 0.8;
+  const pH = 5.0 + 1.5 * progress + (Math.random() - 0.5) * 0.08;
+  const kekeruhanAir = 80 + 270 * progress + (Math.random() - 0.5) * 15;
   const beratKg = targetWeightKg * Math.min(progress * 1.05, 1);
 
   return {
-    kadarAir: Number(kadarAir.toFixed(2)),
-    rasioCN: Number(rasioCN.toFixed(2)),
+    pH: Number(pH.toFixed(2)),
+    kekeruhanAir: Number(kekeruhanAir.toFixed(1)),
     beratKg: Number(beratKg.toFixed(1)),
   };
 }
 
-export type MixingAnomalyType = "kadar-air-drop" | "rasio-cn-shift";
+export type MixingAnomalyType = "ph-shift" | "kekeruhan-drop";
 
 /** Menyuntikkan satu titik anomali untuk keperluan testing alert. */
 export function applyMixingAnomaly(point: MixingPoint, type: MixingAnomalyType): MixingPoint {
-  if (type === "kadar-air-drop") {
-    return { ...point, kadarAir: Number((point.kadarAir - 10 - Math.random() * 3).toFixed(2)) };
+  if (type === "ph-shift") {
+    return { ...point, pH: Number((point.pH + 1.3 + Math.random() * 0.4).toFixed(2)) };
   }
-  return { ...point, rasioCN: Number((point.rasioCN + 7 + Math.random() * 2).toFixed(2)) };
+  return { ...point, kekeruhanAir: Number((point.kekeruhanAir - 100 - Math.random() * 30).toFixed(1)) };
 }

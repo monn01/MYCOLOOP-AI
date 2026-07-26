@@ -11,7 +11,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { AlertBanner } from "@/components/dashboard/alert-banner";
 import { THRESHOLDS } from "@/lib/ai/evaluateReadiness";
 import { ReadinessStatus, PipelineStage } from "@/lib/generated/prisma/enums";
-import { ArrowRightIcon, ThermometerIcon, DropletIcon, FlaskIcon } from "@/components/ui/icons";
+import { ArrowRightIcon, ThermometerIcon, DropletIcon } from "@/components/ui/icons";
 
 const STAGE = PipelineStage.PRE_CONDITIONING;
 
@@ -94,7 +94,7 @@ export default function DashboardUtamaPage() {
       <AlertBanner alerts={alerts} onDismiss={dismissAlert} />
 
       {latestReading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
           <MetricCard
             label="Suhu Chamber"
             value={latestReading.suhu}
@@ -112,16 +112,6 @@ export default function DashboardUtamaPage() {
             sparkline={readings.map((r) => r.kelembapan)}
             isLive={isLive}
             icon={DropletIcon}
-          />
-          <MetricCard
-            label="Tingkat pH"
-            value={latestReading.ph}
-            unit="pH"
-            decimals={2}
-            range={THRESHOLDS.ph}
-            sparkline={readings.map((r) => r.ph)}
-            isLive={isLive}
-            icon={FlaskIcon}
           />
         </div>
       ) : (

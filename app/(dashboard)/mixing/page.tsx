@@ -97,22 +97,23 @@ export default function MixingDashboardPage() {
       {latestReading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:gap-6">
           <MetricCard
-            label="Kadar Air"
-            value={latestReading.kadarAir}
-            unit="%"
-            range={MIXING_THRESHOLDS.kadarAir}
-            sparkline={readings.map((r) => r.kadarAir)}
-            isLive={isLive}
-            icon={DropletIcon}
-          />
-          <MetricCard
-            label="Rasio C:N"
-            value={latestReading.rasioCN}
-            unit=""
-            range={MIXING_THRESHOLDS.rasioCN}
-            sparkline={readings.map((r) => r.rasioCN)}
+            label="Tingkat pH"
+            value={latestReading.pH}
+            unit="pH"
+            decimals={2}
+            range={MIXING_THRESHOLDS.pH}
+            sparkline={readings.map((r) => r.pH)}
             isLive={isLive}
             icon={FlaskIcon}
+          />
+          <MetricCard
+            label="Kekeruhan Air"
+            value={latestReading.kekeruhanAir}
+            unit="NTU"
+            range={MIXING_THRESHOLDS.kekeruhanAir}
+            sparkline={readings.map((r) => r.kekeruhanAir)}
+            isLive={isLive}
+            icon={DropletIcon}
           />
           <StatTile label="Berat Bahan Baku" value={`${latestReading.beratKg.toFixed(1)} kg`} icon={ScaleIcon} />
         </div>

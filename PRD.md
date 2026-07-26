@@ -16,7 +16,7 @@ Produksi baglog jamur tiram di MYCOLOOP-AI berjalan lewat **3 stage**, ketiganya
 
 Ketiganya berbagi satu model `Batch` dengan field `stage` (lihat §8) — field ini awalnya disiapkan forward-compatible sejak Stage 2 pertama dibangun, sekarang direalisasikan penuh untuk Stage 1 dan 3.
 
-> **Catatan arsitektur (2026-07-26):** Set sensor per stage & model otonomi AI direvisi dari rancangan awal — pH pindah dari Pre-Conditioning ke Mixing, sensor Mixing (kadar air/rasio C:N) diganti pH/kekeruhan air/berat, dan AI Mixing naik level dari advisory (klasifikasi kesiapan) jadi closed-loop actuator control (buka/tutup solenoid valve). Kode yang sudah diimplementasikan (schema, evaluator, dashboard Mixing) masih pakai desain lama sampai rework dikerjakan — lihat `TASKPLAN.md` Phase 5b-Rework.
+> **Catatan arsitektur (2026-07-26):** Set sensor per stage & model otonomi AI direvisi dari rancangan awal — pH pindah dari Pre-Conditioning ke Mixing, sensor Mixing (kadar air/rasio C:N) diganti pH/kekeruhan air/berat, dan AI Mixing naik level dari advisory (klasifikasi kesiapan) jadi closed-loop actuator control (buka/tutup solenoid valve). Sudah diimplementasikan penuh — lihat `TASKPLAN.md` Phase 5b.
 
 ## 2. Masalah yang Diselesaikan
 
@@ -78,7 +78,7 @@ Lima layer, sama di ketiga stage:
 - Dashboard: kartu metrik pH, kekeruhan air, berat bahan; log command aktuator (valve mana yang baru dibuka/ditutup & kenapa)
 - AI Control Agent: rule-based state machine — baca pH/kekeruhan/berat, urutkan buka-tutup solenoid valve per saluran bahan (limbah jagung, dedak, kapur, dll.) sampai formula target tercapai; setiap command aktuator lewat safety envelope (batas durasi buka valve, sanity-check sensor sebelum eksekusi, fail-safe posisi tertutup, tombol override manual di dashboard)
 - Transisi otomatis ke status "Siap Dipindahkan" begitu formula tercampur stabil di rentang target — trigger alert `READY` untuk operator memindahkan bahan ke Pre-Conditioning
-- **Catatan implementasi:** kode saat ini (`lib/ai/evaluateMixingReadiness.ts`, schema `MixingReading`) masih pakai desain lama (kadar air/rasio C:N, tanpa aktuasi) — rework tercatat di `TASKPLAN.md` Phase 5b-Rework, belum dikerjakan
+- **Catatan implementasi:** sudah diimplementasikan (`lib/ai/evaluateMixingReadiness.ts` sebagai Mixing Control Agent, schema `MixingReading` pH/kekeruhanAir/beratKg, `ActuatorCommand` audit trail) — lihat `TASKPLAN.md` Phase 5b
 
 ### 7.6 Smart Incubation Monitoring
 - Dashboard: kartu metrik suhu, kelembapan, CO2, cahaya ruang inkubasi + snapshot/preview kamera terbaru
@@ -111,7 +111,7 @@ Lima layer, sama di ketiga stage:
 - `Alert` — batchId, timestamp, type (`ANOMALY`/`READY`/`CONTAMINATION`), message, resolved
 - `User` — id, name, email, role
 
-Skema detail ada di `prisma/schema.prisma`. Model bertanda "target"/"baru, belum diimplementasi" di atas mencatat arah tujuan (lihat `TASKPLAN.md` Phase 5b-Rework & Phase 6b) — schema Prisma aktual belum diubah.
+Skema detail ada di `prisma/schema.prisma`. `MixingReading`, `SensorReading`, dan `ActuatorCommand` sudah sesuai desain di atas (Phase 5b). `IncubationImageAnalysis` masih "target"/belum diimplementasi — lihat `TASKPLAN.md` Phase 6b.
 
 ## 9. Requirement Non-Fungsional
 

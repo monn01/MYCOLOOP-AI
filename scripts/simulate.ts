@@ -39,7 +39,8 @@ function parseArgs(argv: string[]): CliOptions {
         options.durationHours = Number(next());
         break;
       case "--anomaly":
-        options.anomaly = next() === "ph" ? "ph-drop" : "suhu-spike";
+        next(); // satu-satunya jenis anomali saat ini adalah lonjakan suhu
+        options.anomaly = "suhu-spike";
         break;
       case "--anomaly-tick":
         options.anomalyAtTick = Number(next());
@@ -142,11 +143,10 @@ async function main() {
       timestamp: new Date(batch.startTime.getTime() + elapsedHours * HOUR_MS),
       suhu: point.suhu,
       kelembapan: point.kelembapan,
-      ph: point.ph,
     });
 
     console.log(
-      `[tick ${tick}] jam-ke-${elapsedHours.toFixed(1)} suhu=${point.suhu}°C kelembapan=${point.kelembapan}% pH=${point.ph} ` +
+      `[tick ${tick}] jam-ke-${elapsedHours.toFixed(1)} suhu=${point.suhu}°C kelembapan=${point.kelembapan}% ` +
         `-> AI: ${decision.status} (${(decision.confidence * 100).toFixed(0)}%)`
     );
     if (alert) {

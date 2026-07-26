@@ -34,6 +34,18 @@ enum AlertType {
   CONTAMINATION
 }
 
+enum ActuatorAction {
+  OPEN
+  CLOSE
+  ON
+  OFF
+}
+
+enum ActuatorTrigger {
+  AI
+  MANUAL
+}
+
 /// Tiga stage pipeline fisik MYCOLOOP-AI (lihat PRD.md §1.1) — Smart Mixing,
 /// Smart Pre-Conditioning, Smart Incubation Monitoring, masing-masing dengan
 /// reading model sendiri (MixingReading/SensorReading/IncubationReading)
@@ -74,18 +86,19 @@ model Batch {
   incubationReadings IncubationReading[]
   aiDecisions        AIDecision[]
   alerts             Alert[]
+  actuatorCommands   ActuatorCommand[]
 
   @@index([status])
   @@index([stage])
 }
 
-/// Batch stage PRE_CONDITIONING (lihat PRD.md §7.2/§8) — suhu/kelembapan/pH chamber.
+/// Batch stage PRE_CONDITIONING (lihat PRD.md §7.2/§8) — suhu/kelembapan chamber.
+/// pH pindah ke MixingReading sejak pivot arsitektur 2026-07-26 (lihat PRD.md §1.1).
 model SensorReading {
   id         String   @id @default(cuid())
   timestamp  DateTime @default(now())
   suhu       Float
   kelembapan Float
-  ph         Float
 
   batchId String
   batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
@@ -93,13 +106,13 @@ model SensorReading {
   @@index([batchId, timestamp])
 }
 
-/// Batch stage MIXING (lihat PRD.md §7.5/§8) — kadar air & rasio C:N bahan baku sebelum pre-conditioning.
+/// Batch stage MIXING (lihat PRD.md §7.5/§8) — pH, kekeruhan air, berat bahan campuran.
 model MixingReading {
-  id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-  kadarAir  Float
-  rasioCN   Float
-  beratKg   Float
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  pH            Float
+  kekeruhanAir  Float
+  beratKg       Float
 
   batchId String
   batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
@@ -146,4 +159,24 @@ model Alert {
   batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
 
   @@index([batchId, resolved])
+}
+
+/// Audit trail tiap kali aktuator fisik digerakkan (lihat PRD.md §7.5/§7.2/§8/§12,
+/// pivot arsitektur 2026-07-26). Dipakai Mixing (solenoid valve per saluran bahan)
+/// dan Pre-Conditioning (fan aerasi). `target` bebas string ("valve:limbah_jagung",
+/// "fan") karena jumlah/nama saluran valve bisa beda-beda per instalasi.
+model ActuatorCommand {
+  id          String        @id @default(cuid())
+  timestamp   DateTime      @default(now())
+  stage       PipelineStage
+  target      String
+  action      ActuatorAction
+  level       Float?
+  triggeredBy ActuatorTrigger
+  reasoning   String
+
+  batchId String
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, timestamp])
 }

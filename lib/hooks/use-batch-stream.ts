@@ -7,7 +7,7 @@ import type { ReadinessStatus, AlertType, PipelineStage } from "@/lib/generated/
  * Shape minimal, sengaja tidak import tipe generated Prisma (client bundle
  * lebih ringan) — pola yang sama dipakai lib/ai/evaluateReadiness.ts.
  * Generik lintas stage: field selain id/timestamp/batchId beda-beda per
- * stage (suhu/kelembapan/ph vs kadarAir/rasioCN vs suhu/kelembapan/co2/cahaya).
+ * stage (suhu/kelembapan vs pH/kekeruhanAir/beratKg vs suhu/kelembapan/co2/cahaya).
  */
 export type StreamReading = { id: string; timestamp: string; batchId: string } & Record<string, number>;
 

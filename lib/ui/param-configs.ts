@@ -13,17 +13,16 @@ export interface ParamConfigEntry {
 
 export type ParamConfig = Record<string, ParamConfigEntry>;
 
-/** Smart Pre-Conditioning (PRD.md §7.2) — suhu/kelembapan/pH chamber. */
+/** Smart Pre-Conditioning (PRD.md §7.2) — suhu/kelembapan chamber (pH pindah ke Mixing). */
 export const PRE_CONDITIONING_PARAM_CONFIG: ParamConfig = {
   suhu: { label: "Suhu", unit: "°C", color: CHART_COLORS.green700, range: THRESHOLDS.suhu },
   kelembapan: { label: "Kelembapan", unit: "%", color: CHART_COLORS.green500, dash: "6 3", range: THRESHOLDS.kelembapan },
-  ph: { label: "pH", unit: "", color: CHART_COLORS.green300, dash: "2 2", range: THRESHOLDS.ph },
 };
 
-/** Smart Mixing (PRD.md §7.5) — kadar air & rasio C:N bahan baku. */
+/** Smart Mixing (PRD.md §7.5) — pH, kekeruhan air, berat bahan. */
 export const MIXING_PARAM_CONFIG: ParamConfig = {
-  kadarAir: { label: "Kadar Air", unit: "%", color: CHART_COLORS.green700, range: MIXING_THRESHOLDS.kadarAir },
-  rasioCN: { label: "Rasio C:N", unit: "", color: CHART_COLORS.green500, dash: "6 3", range: MIXING_THRESHOLDS.rasioCN },
+  pH: { label: "pH", unit: "", color: CHART_COLORS.green700, range: MIXING_THRESHOLDS.pH },
+  kekeruhanAir: { label: "Kekeruhan Air", unit: "NTU", color: CHART_COLORS.green500, dash: "6 3", range: MIXING_THRESHOLDS.kekeruhanAir },
 };
 
 /** Smart Incubation Monitoring (PRD.md §7.6) — suhu/kelembapan/CO2/cahaya ruang inkubasi. */

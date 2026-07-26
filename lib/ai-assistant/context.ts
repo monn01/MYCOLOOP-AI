@@ -34,14 +34,14 @@ async function getActiveBatch(stage: PipelineStage) {
 async function getReadingText(stage: PipelineStage, batchId: string): Promise<string | null> {
   if (stage === PipelineStage.MIXING) {
     const r = await prisma.mixingReading.findFirst({ where: { batchId }, orderBy: { timestamp: "desc" } });
-    return r ? `Kadar Air ${r.kadarAir}%, Rasio C:N ${r.rasioCN}, Berat ${r.beratKg}kg` : null;
+    return r ? `pH ${r.pH}, Kekeruhan Air ${r.kekeruhanAir}NTU, Berat ${r.beratKg}kg` : null;
   }
   if (stage === PipelineStage.INCUBATION) {
     const r = await prisma.incubationReading.findFirst({ where: { batchId }, orderBy: { timestamp: "desc" } });
     return r ? `Suhu ${r.suhu}°C, Kelembapan ${r.kelembapan}%, CO2 ${r.co2}ppm, Cahaya ${r.cahaya}lux` : null;
   }
   const r = await prisma.sensorReading.findFirst({ where: { batchId }, orderBy: { timestamp: "desc" } });
-  return r ? `Suhu ${r.suhu}°C, Kelembapan ${r.kelembapan}%, pH ${r.ph}` : null;
+  return r ? `Suhu ${r.suhu}°C, Kelembapan ${r.kelembapan}%` : null;
 }
 
 async function getStageSnapshot(stage: PipelineStage): Promise<StageSnapshot> {

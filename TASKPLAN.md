@@ -4,7 +4,7 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 > **Konteks scope:** MYCOLOOP-AI punya 3 stage pipeline produksi (Smart Mixing → Smart Pre-Conditioning → Smart Incubation Monitoring). Phase 0–5 awalnya cuma menggarap **Stage 2 (Smart Pre-Conditioning)**; Phase 5b dan 5c menyusul menggarap Stage 1 dan Stage 3 penuh (data model, AI engine, simulator, dashboard) — ketiganya berbagi model `Batch`/`AIDecision`/`Alert`, tapi masing-masing punya reading model & AI evaluator sendiri karena parameter sensornya beda. Detail lihat `PRD.md` §1.1.
 
-> **Pivot arsitektur (2026-07-26):** Set sensor & model otonomi AI per stage direvisi dari rancangan Phase 5b/5c — lihat `PRD.md` §1.1 buat ringkasan lengkap. Ringkas: pH pindah dari Pre-Conditioning ke Mixing, sensor Mixing ganti dari kadar air/rasio C:N jadi pH/kekeruhan air/berat, AI Mixing naik level dari klasifikasi kesiapan jadi closed-loop actuator control (solenoid valve), dan kamera masuk sebagai sinyal kedua deteksi kontaminasi Incubation (image processing klasik, bukan model CV terlatih). Checklist Phase 5b/5c di bawah **sudah selesai untuk desain lama** — belum direvisi ke desain baru; lihat Phase 5b-Rework dan Phase 6b (baru) buat kerjaan lanjutannya.
+> **Pivot arsitektur (2026-07-26):** Set sensor & model otonomi AI per stage direvisi dari rancangan Phase 5b/5c — lihat `PRD.md` §1.1 buat ringkasan lengkap. Ringkas: pH pindah dari Pre-Conditioning ke Mixing, sensor Mixing ganti dari kadar air/rasio C:N jadi pH/kekeruhan air/berat, AI Mixing naik level dari klasifikasi kesiapan jadi closed-loop actuator control (solenoid valve), dan kamera masuk sebagai sinyal kedua deteksi kontaminasi Incubation (image processing klasik, bukan model CV terlatih). Phase 5b di bawah **sudah direvisi ke desain baru** (selesai); Phase 5c (Incubation) masih desain lama — lihat Phase 6b buat kerjaan lanjutannya di situ.
 
 ---
 
@@ -58,25 +58,16 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 ## Phase 5b — Smart Mixing (Full Stack)
 
-- [x] Tambah model `MixingReading` (kadarAir, rasioCN, beratKg) di `prisma/schema.prisma`, migrasi `add-mixing-incubation-readings`
-- [x] AI engine rule-based `lib/ai/evaluateMixingReadiness.ts` — threshold kadar air 50–60%, rasio C:N 25–35, moving average + deteksi anomali (kadar air drop, rasio C:N shift), unit test di `lib/ai/evaluateMixingReadiness.test.ts`
-- [x] Titik masuk ingest `lib/sensors/ingestMixing.ts`, simulator `lib/simulator/curveMixing.ts` + `scripts/simulateMixing.ts` (`npm run simulate:mixing`)
-- [x] API `app/api/mixing-readings/route.ts` (GET) + SSE `app/api/stream/mixing-readings/route.ts`; `app/api/batches`/`alerts`/`decisions` sudah generic, dipakai langsung tanpa perubahan
-- [x] Dashboard `app/(dashboard)/mixing/page.tsx` (Hero Card + Metric Card kadar air/rasio C:N + info berat) dan `app/(dashboard)/mixing/monitor/page.tsx` (chart + AI Decision Panel)
-- [x] Data demo di `prisma/seed.ts` (batch COMPLETED + RUNNING)
-
-## Phase 5b-Rework — Mixing: Sensor Baru + Actuator Control (Belum Dikerjakan)
-
-> Hardware-independent — bisa dikerjakan sekarang pakai simulator, sama seperti Phase 5b awal. Ganti total isi Phase 5b di atas, bukan tambahan paralel. Lihat `PRD.md` §7.5/§8/§12.
-
-- [ ] Migrasi schema `MixingReading`: ganti `kadarAir`/`rasioCN` → `pH`/`kekeruhanAir`, `beratKg` tetap
-- [ ] Migrasi schema `SensorReading` (Pre-Conditioning): drop field `pH` (pindah ke Mixing)
-- [ ] Model baru `ActuatorCommand` (batchId, timestamp, stage, target, action, triggeredBy, reasoning) — audit trail command aktuator, dipakai Mixing (valve) & Pre-Conditioning (fan)
-- [ ] Rewrite `lib/ai/evaluateMixingReadiness.ts` → Mixing Control Agent: state machine rule-based yang urutkan buka/tutup valve per saluran bahan sampai target pH/kekeruhan/berat tercapai
-- [ ] Safety envelope (unit-testable, tanpa hardware): batas durasi buka valve, sanity-check sensor sebelum eksekusi, fail-safe posisi tertutup, path override manual
-- [ ] Update simulator `lib/simulator/curveMixing.ts` + `scripts/simulateMixing.ts` buat sensor baru, dan log command aktuator yang "dieksekusi" (masih simulasi, belum ke hardware asli)
-- [ ] Update dashboard Mixing: metric card pH/kekeruhan/berat, log command valve terbaru
-- [ ] Update `prisma/seed.ts` buat data demo sensor & command baru
+- [x] Model `MixingReading` (pH, kekeruhanAir, beratKg) di `prisma/schema.prisma` — direvisi dari desain awal (kadarAir/rasioCN) lewat migrasi `mixing_actuator_pivot` (2026-07-26, lihat `PRD.md` §1.1); `SensorReading` (Pre-Conditioning) juga di migrasi ini, drop field `pH` (pindah ke Mixing)
+- [x] Model baru `ActuatorCommand` (batchId, timestamp, stage, target, action, triggeredBy, reasoning) — audit trail command aktuator, dipakai Mixing (valve) sekarang & Pre-Conditioning (fan) di Phase 5f
+- [x] Safety envelope generik `lib/ai/actuatorSafetyEnvelope.ts` (dipakai Mixing sekarang, reusable buat Phase 5f) — sensor sanity-check, fail-safe ke posisi aman, cap durasi buka beruntun (`MAX_CONSECUTIVE_OPEN_COMMANDS`), override manual operator selalu menang; unit test di `lib/ai/actuatorSafetyEnvelope.test.ts`
+- [x] Mixing Control Agent `lib/ai/evaluateMixingReadiness.ts` — state machine rule-based (bukan cuma classifier): urutkan buka/tutup valve `limbah_jagung`→`dedak`→`kapur` berdasar berat kumulatif (`MIXING_CHANNELS`, target 100kg placeholder), lalu quality-gate pH (6.0-7.0)/kekeruhan air (200-500 NTU placeholder, kalibrasi Phase 6) dengan koreksi otomatis (reopen kapur/limbah jagung); anomaly deteksi berat turun/pH shift/kekeruhan drop; unit test di `lib/ai/evaluateMixingReadiness.test.ts`
+- [x] `lib/sensors/ingestMixing.ts` — jalankan control agent, terapkan safety envelope per channel (diff terhadap command terakhir supaya tidak spam), simpan `ActuatorCommand` yang benar-benar dieksekusi
+- [x] Simulator `lib/simulator/curveMixing.ts` + `scripts/simulateMixing.ts` update buat sensor baru (pH naik dari asam ke netral, kekeruhan naik seiring progress), log command valve yang dieksekusi — diverifikasi end-to-end (batch baru → urutan valve limbah jagung→dedak→kapur sesuai berat kumulatif → quality gate)
+- [x] API `app/api/mixing-readings/route.ts` (GET, generic) + `app/api/actuator-commands/route.ts` (GET, baru — generic lintas stage) + SSE `app/api/stream/mixing-readings/route.ts`
+- [x] Dashboard `app/(dashboard)/mixing/page.tsx` (Metric Card pH/kekeruhan air + info berat) dan `app/(dashboard)/mixing/monitor/page.tsx` (chart + AI Decision Panel + `ValveCommandLog` baru) — diverifikasi visual di browser
+- [x] Pre-Conditioning ikut disesuaikan (field `pH` di-drop): `lib/ai/evaluateReadiness.ts`, `lib/sensors/ingest.ts`, `lib/simulator/curve.ts`, `scripts/simulate.ts`, `app/(dashboard)/page.tsx`, `app/(dashboard)/riwayat/[id]/page.tsx`, `lib/ai-assistant/context.ts` dan `lib/ai-assistant/gemini.ts` (system prompt) — diverifikasi visual di browser
+- [x] Data demo di `prisma/seed.ts` (batch COMPLETED + RUNNING per stage, plus contoh log `ActuatorCommand` buat batch Mixing selesai)
 
 ## Phase 5c — Smart Incubation Monitoring (Full Stack)
 
@@ -109,7 +100,7 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 > Hardware-independent — lanjutan dari `AerationControl` yang masih "UI-only". Lihat `PRD.md` §7.2/§12.
 
 - [ ] `evaluateReadiness` output tambah rekomendasi aksi fan (on/off/level), bukan cuma status readiness
-- [ ] Command fan dicatat ke `ActuatorCommand` (model baru dari Phase 5b-Rework) dengan `triggeredBy: AI` atau `MANUAL`
+- [ ] Command fan dicatat ke `ActuatorCommand` (model sudah ada dari Phase 5b, lihat `lib/ai/actuatorSafetyEnvelope.ts`) dengan `triggeredBy: AI` atau `MANUAL`
 - [ ] Safety envelope buat fan (sama pola dengan Mixing): sanity-check sensor, override manual tetap prioritas di atas AI
 - [ ] `AerationControl` di dashboard baca status command terakhir alih-alih UI-only
 
@@ -125,7 +116,7 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 ## Phase 6 — Integrasi ESP32 & Aktuator (Setelah Hardware Siap)
 
 - [ ] Tulis firmware ESP32 per stage: Mixing (pH/kekeruhan/berat → MQTT, subscribe command solenoid valve), Pre-Conditioning (suhu/kelembapan → MQTT, subscribe command fan), Incubation (suhu/kelembapan/CO2/cahaya + capture kamera → MQTT/upload gambar)
-- [ ] Wiring command aktuator asli: solenoid valve (Mixing) dan fan (Pre-Conditioning) — safety envelope dari Phase 5b-Rework/5f harus aktif sebelum firmware menerima command produksi
+- [ ] Wiring command aktuator asli: solenoid valve (Mixing) dan fan (Pre-Conditioning) — safety envelope dari Phase 5b/5f harus aktif sebelum firmware menerima command produksi
 - [ ] Aktifkan MQTT subscriber bridge di backend (ganti simulator dengan data asli) — namespace topic per stage tetap dipakai walau 1 ESP32 gabungan atau 3 papan terpisah (keputusan tim hardware, lihat `PRD.md` §6)
 - [ ] Kalibrasi sensor (bandingkan pembacaan ESP32 vs alat ukur manual) untuk ketiga stage
 - [ ] Kalibrasi kamera Incubation: bandingkan ESP32-CAM vs webcam/Raspberry Pi camera kalau keduanya dicoba, catat trade-off akurasi vs biaya (lihat `PRD.md` §7.6)
@@ -154,4 +145,4 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 
 Phase 0–4 adalah **jalur kritis** yang harus selesai duluan karena semuanya bisa dikerjakan tanpa menunggu tim hardware. Phase 5 (dashboard Pre-Conditioning) bisa paralel dengan Phase 4 begitu API dasar sudah ada. Phase 5b/5c/5d (Smart Mixing, Smart Incubation, navigasi lintas-stage) menyusul setelah Phase 5 selesai, mengulang pola Phase 1–5 dalam skala lebih kecil per stage. Phase 5e (AI Assistant) independen dari hardware, cocok dikerjakan kapan pun slot Phase 6 masih terblokir. Phase 6 baru dimulai setelah alat fisik (mixer/chamber/rak inkubasi) dan ESP32 siap dari tim alat — untuk ketiga stage sekaligus. **Phase 7 bukan jalan pintas kalau Phase 6 terblokir** — ML roadmap butuh minimal 20-30 batch data historis nyata dari produksi sungguhan, yang baru ada setelah hardware jalan; kerjakan Phase 7 hanya kalau data itu sudah terkumpul, bukan sebagai pengganti Phase 6. Kalau Phase 6 terblokir, isi waktu dengan Phase 5e atau Phase 8 (keduanya tidak butuh hardware).
 
-**Phase 5b-Rework, 5f, dan 6b** (baru, dari pivot arsitektur 2026-07-26) sama-sama hardware-independent — bisa dikerjakan pakai simulator kapan saja, sama seperti Phase 5e dan 8, tanpa nunggu Phase 6. Urutan disarankan: 5b-Rework dulu (schema Mixing berubah, banyak yang bergantung ke situ termasuk `ActuatorCommand`), baru 5f (pakai model `ActuatorCommand` yang sama), baru 6b (independen, bisa paralel). Phase 6 (hardware asli) sekarang juga mencakup wiring aktuator (valve/fan) dan kamera, bukan cuma sensor baca — safety envelope dari 5b-Rework/5f wajib aktif dulu sebelum Phase 6 mengizinkan command aktuator ke hardware produksi.
+**Phase 5b** (Mixing sensor+actuator pivot) sudah selesai. **Phase 5f dan 6b** (baru, dari pivot arsitektur 2026-07-26) sama-sama hardware-independent — bisa dikerjakan pakai simulator kapan saja, sama seperti Phase 5e dan 8, tanpa nunggu Phase 6. Keduanya independen satu sama lain, bisa dikerjakan dalam urutan apa saja atau paralel; 5f tinggal pakai model `ActuatorCommand`/`lib/ai/actuatorSafetyEnvelope.ts` yang sudah ada dari Phase 5b. Phase 6 (hardware asli) sekarang juga mencakup wiring aktuator (valve/fan) dan kamera, bukan cuma sensor baca — safety envelope dari Phase 5b/5f wajib aktif dulu sebelum Phase 6 mengizinkan command aktuator ke hardware produksi.

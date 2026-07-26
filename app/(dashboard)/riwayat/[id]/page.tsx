@@ -20,7 +20,7 @@ async function getReadingsForStage(batchId: string, stage: PipelineStage): Promi
     const rows = await prisma.mixingReading.findMany({ where: { batchId }, orderBy: { timestamp: "asc" }, take: 1000 });
     return {
       paramConfig: MIXING_PARAM_CONFIG,
-      data: rows.map((r) => ({ timestamp: r.timestamp.toISOString(), kadarAir: r.kadarAir, rasioCN: r.rasioCN })),
+      data: rows.map((r) => ({ timestamp: r.timestamp.toISOString(), pH: r.pH, kekeruhanAir: r.kekeruhanAir })),
     };
   }
   if (stage === PipelineStage.INCUBATION) {
@@ -39,7 +39,7 @@ async function getReadingsForStage(batchId: string, stage: PipelineStage): Promi
   const rows = await prisma.sensorReading.findMany({ where: { batchId }, orderBy: { timestamp: "asc" }, take: 1000 });
   return {
     paramConfig: PRE_CONDITIONING_PARAM_CONFIG,
-    data: rows.map((r) => ({ timestamp: r.timestamp.toISOString(), suhu: r.suhu, kelembapan: r.kelembapan, ph: r.ph })),
+    data: rows.map((r) => ({ timestamp: r.timestamp.toISOString(), suhu: r.suhu, kelembapan: r.kelembapan })),
   };
 }
 

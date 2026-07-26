@@ -4,6 +4,7 @@ import { useActiveBatch } from "@/lib/hooks/use-active-batch";
 import { useBatchStream } from "@/lib/hooks/use-batch-stream";
 import { SensorChart } from "@/components/dashboard/sensor-chart";
 import { AIDecisionPanel } from "@/components/dashboard/ai-decision-panel";
+import { ValveCommandLog } from "@/components/dashboard/valve-command-log";
 import { BATCH_STATUS_STYLE } from "@/lib/ui/status-styles";
 import { MIXING_PARAM_CONFIG } from "@/lib/ui/param-configs";
 import { PipelineStage } from "@/lib/generated/prisma/enums";
@@ -46,7 +47,10 @@ export default function MixingMonitorPage() {
 
       <SensorChart data={readings} paramConfig={MIXING_PARAM_CONFIG} />
 
-      <AIDecisionPanel decisions={decisions} stage={STAGE} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+        <AIDecisionPanel decisions={decisions} stage={STAGE} />
+        <ValveCommandLog batchId={batch.id} />
+      </div>
     </div>
   );
 }

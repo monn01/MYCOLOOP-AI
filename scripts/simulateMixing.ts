@@ -44,7 +44,7 @@ function parseArgs(argv: string[]): CliOptions {
         options.durationHours = Number(next());
         break;
       case "--anomaly":
-        options.anomaly = next() === "rasio" ? "rasio-cn-shift" : "kadar-air-drop";
+        options.anomaly = next() === "kekeruhan" ? "kekeruhan-drop" : "ph-shift";
         break;
       case "--anomaly-tick":
         options.anomalyAtTick = Number(next());
@@ -137,20 +137,23 @@ async function main() {
       console.log(`>> Anomali disuntikkan (${options.anomaly})`);
     }
 
-    const { decision, alert } = await ingestMixingReading({
+    const { decision, alert, actuatorCommands } = await ingestMixingReading({
       batchId: batch.id,
       timestamp: new Date(batch.startTime.getTime() + elapsedHours * HOUR_MS),
-      kadarAir: point.kadarAir,
-      rasioCN: point.rasioCN,
+      pH: point.pH,
+      kekeruhanAir: point.kekeruhanAir,
       beratKg: point.beratKg,
     });
 
     console.log(
-      `[tick ${tick}] jam-ke-${elapsedHours.toFixed(1)} kadarAir=${point.kadarAir}% rasioCN=${point.rasioCN} berat=${point.beratKg}kg ` +
+      `[tick ${tick}] jam-ke-${elapsedHours.toFixed(1)} pH=${point.pH} kekeruhan=${point.kekeruhanAir}NTU berat=${point.beratKg}kg ` +
         `-> AI: ${decision.status} (${(decision.confidence * 100).toFixed(0)}%)`
     );
     if (alert) {
       console.log(`   >> Alert dibuat: [${alert.type}] ${alert.message}`);
+    }
+    for (const command of actuatorCommands) {
+      console.log(`   >> Valve ${command.target}: ${command.action} (${command.triggeredBy}) — ${command.reasoning}`);
     }
 
     elapsedHours += options.speedMinutesPerTick / 60;
