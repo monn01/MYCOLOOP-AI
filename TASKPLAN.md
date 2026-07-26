@@ -72,11 +72,12 @@ Urutan pengerjaan disusun agar development tidak terblokir oleh progres alat fis
 ## Phase 5c — Smart Incubation Monitoring (Full Stack)
 
 - [x] Tambah model `IncubationReading` (suhu, kelembapan, co2, cahaya) + `AlertType.CONTAMINATION` di `prisma/schema.prisma`
-- [x] AI engine rule-based `lib/ai/evaluateIncubationReadiness.ts` — threshold suhu 22–28°C, kelembapan 70–90%, CO2 500–1500ppm, cahaya 0–50lux; deteksi dini kontaminasi dari pola CO2 naik + kelembapan turun bersamaan (bukan computer vision, lihat `PRD.md` §5/§7.6); unit test di `lib/ai/evaluateIncubationReadiness.test.ts`
+- [x] AI engine rule-based `lib/ai/evaluateIncubationReadiness.ts` — threshold suhu 22–28°C, kelembapan 70–90%, CO2 500–5000ppm, cahaya 0–50lux; deteksi dini kontaminasi dari pola CO2 naik + kelembapan naik bersamaan (bukan computer vision, lihat `PRD.md` §5/§7.6); unit test di `lib/ai/evaluateIncubationReadiness.test.ts`
 - [x] Titik masuk ingest `lib/sensors/ingestIncubation.ts` (memetakan pola kontaminasi ke `Alert.type = CONTAMINATION`), simulator `lib/simulator/curveIncubation.ts` + `scripts/simulateIncubation.ts` (`npm run simulate:incubation`)
 - [x] API `app/api/incubation-readings/route.ts` (GET) + SSE `app/api/stream/incubation-readings/route.ts`
 - [x] Dashboard `app/(dashboard)/incubation/page.tsx` (Hero Card + Metric Card suhu/kelembapan/CO2/cahaya) dan `app/(dashboard)/incubation/monitor/page.tsx` (chart + AI Decision Panel)
 - [x] Data demo di `prisma/seed.ts` (batch COMPLETED + RUNNING, termasuk contoh alert `CONTAMINATION`)
+- [x] Threshold CO2 & arah pola kontaminasi direvisi 2026-07-26 berdasar riset literatur publik, disetujui tim — lihat `PRD.md` §13 buat detail & sumber
 
 ## Phase 5d — Navigasi Lintas-Stage & Visual Refresh
 

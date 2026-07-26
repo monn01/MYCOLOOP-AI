@@ -12,7 +12,7 @@ Produksi baglog jamur tiram di MYCOLOOP-AI berjalan lewat **3 stage**, ketiganya
 
 1. **Smart Mixing** — pencacahan limbah jagung + pencampuran otomatis. Sensor: pH, kekeruhan air, berat bahan. AI di sini **mengontrol aktuator** (solenoid valve tiap saluran bahan) untuk mencapai formula target secara closed-loop, bukan sekadar mengklasifikasi kesiapan (lihat §7.5, §12 soal safety envelope).
 2. **Smart Pre-Conditioning** — chamber dengan sensor suhu ruangan + kelembapan udara + AI decision agent yang menentukan kapan media siap sterilisasi, sekaligus mengontrol fan aerasi (lihat §7.2). Ini hero feature software karena paling novel duluan dikembangkan (condition-based, bukan time-based).
-3. **Smart Incubation Monitoring** — setelah sterilisasi + inokulasi, IoT monitor ruang inkubasi (suhu, kelembapan, CO2, cahaya) **plus kamera** (ESP32-CAM/webcam/Raspberry Pi camera) untuk deteksi dini risiko kontaminasi — AI menggabungkan pola sensor (CO2 naik + kelembapan turun) dengan analisis visual (lihat §5, §7.6).
+3. **Smart Incubation Monitoring** — setelah sterilisasi + inokulasi, IoT monitor ruang inkubasi (suhu, kelembapan, CO2, cahaya) **plus kamera** (ESP32-CAM/webcam/Raspberry Pi camera) untuk deteksi dini risiko kontaminasi — AI menggabungkan pola sensor (CO2 naik + kelembapan naik bersamaan, indikasi sirkulasi udara buruk) dengan analisis visual (lihat §5, §7.6, §13).
 
 Ketiganya berbagi satu model `Batch` dengan field `stage` (lihat §8) — field ini awalnya disiapkan forward-compatible sejak Stage 2 pertama dibangun, sekarang direalisasikan penuh untuk Stage 1 dan 3.
 
@@ -82,8 +82,8 @@ Lima layer, sama di ketiga stage:
 
 ### 7.6 Smart Incubation Monitoring
 - Dashboard: kartu metrik suhu, kelembapan, CO2, cahaya ruang inkubasi + snapshot/preview kamera terbaru
-- AI Decision Engine: threshold suhu 22–28°C, kelembapan 70–90%, CO2 500–1500ppm, cahaya 0–50lux (ruang gelap), moving average + deteksi anomali suhu
-- **Deteksi dini kontaminasi (dua sinyal digabung, lihat §5)**: (1) pola sensor — lonjakan CO2 bersamaan penurunan kelembapan drastis dalam interval yang sama (sudah jalan); (2) analisis visual dari kamera (ESP32-CAM/webcam/Raspberry Pi camera) — image processing klasik (segmentasi warna/tekstur) mendeteksi bercak khas kontaminasi. Kedua sinyal independen, AI gabungkan buat kurangi false positive/negative sebelum memicu `Alert` bertipe `CONTAMINATION` — operator tetap wajib konfirmasi visual manual sebelum tindakan
+- AI Decision Engine: threshold suhu 22–28°C, kelembapan 70–90%, CO2 500–5000ppm (dinaikkan dari 500–1500ppm 2026-07-26, lihat §13), cahaya 0–50lux (ruang gelap), moving average + deteksi anomali suhu
+- **Deteksi dini kontaminasi (dua sinyal digabung, lihat §5/§13)**: (1) pola sensor — lonjakan CO2 bersamaan kenaikan kelembapan drastis dalam interval yang sama, indikasi sirkulasi udara buruk/kondisi stagnan (sudah jalan, arah kelembapan direvisi 2026-07-26 berdasar riset literatur Trichoderma — lihat §13); (2) analisis visual dari kamera (ESP32-CAM/webcam/Raspberry Pi camera) — image processing klasik (segmentasi warna/tekstur) mendeteksi bercak khas kontaminasi. Kedua sinyal independen, AI gabungkan buat kurangi false positive/negative sebelum memicu `Alert` bertipe `CONTAMINATION` — operator tetap wajib konfirmasi visual manual sebelum tindakan
 - Transisi otomatis ke status "Siap Panen" begitu parameter stabil (miselium tumbuh optimal)
 - **Catatan hardware:** ESP32-CAM opsi termurah tapi noisy (akurasi rendah); webcam/Raspberry Pi camera direkomendasikan kalau akurasi deteksi visual jadi prioritas
 
@@ -157,33 +157,32 @@ Skema detail ada di `prisma/schema.prisma`. `MixingReading`, `SensorReading`, da
 | AI Assistant bisa berhalusinasi / kasih saran keliru | Assistant read-only (tidak bisa eksekusi aksi), system prompt eksplisit minta jujur kalau data tidak cukup; operator tetap validasi manual sebelum bertindak |
 | `GEMINI_API_KEY` belum diset / kuota habis | Endpoint mengembalikan error jelas ke UI, sisa dashboard tetap berfungsi normal (assistant bukan dependency kritis) |
 
-## 13. Riset Threshold vs Literatur (2026-07-26, untuk Diskusi Tim)
+## 13. Riset Threshold vs Literatur (2026-07-26)
 
-Threshold di §7 kebanyakan ditulis sebagai placeholder (belum ada data kalibrasi lab dari hardware asli). Riset literatur publik dilakukan untuk mengecek mana yang sudah cukup masuk akal dan mana yang perlu dikoreksi/diklarifikasi sebelum Phase 6 kalibrasi — **belum ada perubahan kode**, ini murni bahan diskusi tim sebelum threshold di `lib/ai/evaluate*.ts` diubah. Constraint utama: data harus cocok proses fisik spesifik project ini (limbah jagung, iklim tropis, desain chamber sendiri) — dataset generik cuma dipakai buat validasi arah/rentang, bukan angka final.
+Threshold di §7 kebanyakan ditulis sebagai placeholder (belum ada data kalibrasi lab dari hardware asli). Riset literatur publik dilakukan untuk mengecek mana yang sudah cukup masuk akal dan mana yang perlu dikoreksi — tim sudah review dan approve temuan di bawah, jadi threshold yang punya angka literatur jelas **sudah diterapkan** ke `lib/ai/evaluate*.ts`. Constraint utama tetap sama: data harus cocok proses fisik spesifik project ini (limbah jagung, iklim tropis, desain chamber sendiri) — dataset generik dipakai buat validasi arah/rentang, bukan dianggap angka final tanpa kalibrasi Phase 6.
 
-### Tervalidasi kuat (selaras literatur)
+### Tervalidasi, tidak diubah (sudah selaras literatur)
 
-| Stage | Parameter | Threshold saat ini | Temuan literatur | Sumber kunci |
+| Stage | Parameter | Threshold | Temuan literatur | Sumber kunci |
 |---|---|---|---|---|
 | Mixing | pH | 6.0–7.0 | Formula baglog Indonesia (serbuk gergaji:dedak:tepung jagung:kapur 80:17:1:2) target pH 6–7 persis sama | [Cybex Kementan](http://cybex.pertanian.go.id/mobile/artikel/84052/Pembuatan-Baglog-media-Tanam-Jamur-Tiram/) |
 | Incubation | suhu | 22–28°C | Kolonisasi tercepat di 22–24°C | [Fungi Ally](https://www.fungially.com/blogs/growing-mushrooms/fix-oyster-mushroom-growing-problems-for-better-yields), [La Mycosphère](https://lamycosphere.com/en-int/blogs/the-future-is-fungi/l-incubation-des-substrats-de-champignons-mode-d-emploi-pour-une-colonisation-reussie) |
 | Incubation | kelembapan | 70–90% | Sumber sebut 80–90% (kamar gelap) dan 70% (umum) — rentang PRD menangkap keduanya | La Mycosphère, Fungi Ally |
 
-### Perlu didiskusikan — ada indikasi mismatch
+### Diterapkan — dikoreksi berdasar temuan literatur (2026-07-26)
 
-| Stage | Parameter | Threshold saat ini | Temuan literatur | Catatan |
+| Stage | Parameter | Sebelumnya | Sekarang | Alasan |
 |---|---|---|---|---|
-| Incubation | CO2 | 500–1500ppm | Kolonisasi/spawn run dalam kantong tertutup normalnya **10.000–20.000ppm** (toleransi 5.000+ppm); 500–1000ppm itu justru target fase **fruiting**, bukan kolonisasi | [CO2 Meter](https://www.co2meter.com/blogs/news/co2-mushroom-farming), [CO2 Tek](https://zombiemyco.com/blogs/mushroom-teks/co2-meter-for-mushrooms-do-you-really-need-one). Kemungkinan penjelasan: sensor MYCOLOOP-AI ngukur CO2 **ruangan** rak inkubasi (volume udara jauh lebih besar dari 1 kantong tertutup), bukan di dalam baglog — perlu dikonfirmasi desain fisik rak/ruangannya tertutup atau berventilasi |
-| Incubation | Pola kontaminasi (CO2 naik + kelembapan **turun** bersamaan) | Rule di `evaluateIncubationReadiness.ts` | Literatur soal Trichoderma (kontaminan hijau paling umum) justru sebut kondisi berisiko itu CO2 tinggi + kelembapan **tinggi** bersamaan (stagnan, lembap, hangat) — arah kelembapan yang tertulis mungkin terbalik | [Nature Lion](https://naturelion.ca/blog/green-mold-mushroom-contamination), [ZombieMyco](https://zombiemyco.com/blogs/mushrooms/green-mold-in-mushroom-grow-bags-what-can-you-do). Tidak ditemukan sumber yang mengkonfirmasi pola "kelembapan turun" — perlu tahu rasional aslinya sebelum diubah |
-| Mixing | kekeruhan air | 200–500 NTU | Turbidity leachate kompos sangat bervariasi tergantung bahan baku (27–3618 NTU di studi berbeda) — tidak ada korelasi baku "kekeruhan X NTU = kelembapan Y%" yang ditemukan | [WSDOT Compost Leachate Review](https://www.wsdot.wa.gov/research/reports/fullreports/819.1.pdf). Threshold ini paling lemah dasarnya, kemungkinan besar perlu dikalibrasi empiris (Phase 6), bukan diambil dari literatur |
+| Incubation | CO2 | 500–1500ppm | **500–5000ppm** | Kolonisasi/spawn run dalam kantong tertutup normalnya 10.000–20.000ppm (toleransi mycelium eksplisit disebut 5.000+ppm); 500–1000ppm itu justru target fase **fruiting**, bukan kolonisasi. 5000 dipakai sebagai batas atas (bukan langsung ke 10.000-20.000) karena itu level ruangan diasumsikan lebih rendah dari kantong individual tertutup — asumsi ini (`lib/ai/evaluateIncubationReadiness.ts`) masih perlu dikonfirmasi ulang begitu desain fisik rak inkubasi jelas, lihat [CO2 Meter](https://www.co2meter.com/blogs/news/co2-mushroom-farming), [CO2 Tek](https://zombiemyco.com/blogs/mushroom-teks/co2-meter-for-mushrooms-do-you-really-need-one) |
+| Incubation | Pola kontaminasi | CO2 naik + kelembapan **turun** bersamaan | CO2 naik + kelembapan **naik** bersamaan | Literatur Trichoderma (kontaminan hijau paling umum) konsisten sebut kondisi berisiko itu CO2 tinggi + kelembapan tinggi bersamaan (stagnan/lembap/hangat/sirkulasi buruk) — tidak ditemukan sumber yang mendukung arah "kelembapan turun". Diubah di `lib/ai/evaluateIncubationReadiness.ts` (`KELEMBAPAN_RISE_DELTA`), test disesuaikan | [Nature Lion](https://naturelion.ca/blog/green-mold-mushroom-contamination), [ZombieMyco](https://zombiemyco.com/blogs/mushrooms/green-mold-in-mushroom-grow-bags-what-can-you-do) |
 
-### Perlu klarifikasi konsep proses
+### Masih placeholder — tidak ada dasar literatur yang cukup buat diubah
 
-| Stage | Parameter | Threshold saat ini | Pertanyaan |
+| Stage | Parameter | Threshold | Kenapa belum diubah |
 |---|---|---|---|
-| Pre-Conditioning | suhu | 25–35°C | Belum jelas proses fisiknya: kalau ini curing/pengkondisian sebelum sterilisasi, 25–35°C (suhu ruang) masuk akal. Kalau dimaksudkan sebagai pasteurisasi aktif, literatur bilang butuh 60–77°C selama 1–2 jam ([Nature Lion](https://naturelion.ca/blog/how-to-sterilize-mushroom-substrate)) — beda jauh dari threshold saat ini. Perlu klarifikasi tim proses mana yang dimaksud |
+| Mixing | kekeruhan air | 200–500 NTU | Turbidity leachate kompos sangat bervariasi tergantung bahan baku (27–3618 NTU di studi berbeda) — tidak ada korelasi baku "kekeruhan X NTU = kelembapan Y%" yang ditemukan di literatur mana pun, jadi tidak ada angka pengganti yang lebih valid dari tebakan awal. Kalibrasi empiris Phase 6 jauh lebih penting di sini dibanding parameter lain — lihat [WSDOT Compost Leachate Review](https://www.wsdot.wa.gov/research/reports/fullreports/819.1.pdf) |
+| Pre-Conditioning | suhu | 25–35°C | Belum jelas proses fisiknya: kalau ini curing/pengkondisian sebelum sterilisasi, 25–35°C (suhu ruang) masuk akal. Kalau dimaksudkan sebagai pasteurisasi aktif, literatur bilang butuh 60–77°C selama 1–2 jam ([Nature Lion](https://naturelion.ca/blog/how-to-sterilize-mushroom-substrate)) — beda jauh dari threshold saat ini, dan mengubahnya tanpa tahu proses mana yang dimaksud berisiko salah total, bukan cuma meleset angka. Masih perlu klarifikasi tim soal proses fisiknya sebelum ini disentuh |
 
 ### Referensi tambahan (validasi silang, bukan langsung dipakai)
 
 - Formula tradisional serbuk gergaji + limbah tongkol jagung (bukan limbah jagung dominan) dari riset lokal: kadar air 50–65%, pH 6–7 — lihat [Kalderanews](https://www.kalderanews.com/2024/09/27/baglog-tongkol-jagung-formulasi-terbaik-untuk-produksi-jamur-tiram-putih/) dan [Substrate Chemistry](https://magicmushroomsubstrate.co.uk/research/substrate-chemistry/) (C:N 20:1–47.99:1 tergantung studi — rentang lebar, dipakai buat validasi arah bukan angka pasti)
-- Threshold `evaluateMixingReadiness.ts`/`evaluateReadiness.ts`/`evaluateIncubationReadiness.ts` tetap seperti sekarang sampai tim memutuskan mana yang mau dikoreksi — jangan asumsikan tabel di atas sudah final

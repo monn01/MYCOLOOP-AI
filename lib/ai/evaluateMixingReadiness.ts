@@ -13,11 +13,17 @@ export interface MixingReadingInput {
 }
 
 /**
- * PLACEHOLDER — belum ada angka kalibrasi lab untuk campuran limbah jagung.
- * pH pakai target netral yang sama dengan Pre-Conditioning lama (6-7).
- * kekeruhanAir dipakai sebagai proxy kelembapan/homogenitas campuran (makin
- * keruh air rendaman/leachate = makin banyak partikel organik terlarut).
- * Perlu dikalibrasi ulang di TASKPLAN.md Phase 6 begitu sensor fisik siap.
+ * Divalidasi riset literatur publik 2026-07-26 (lihat PRD.md §13):
+ * - pH: 6.0-7.0 cocok persis dengan formula baglog Indonesia (Cybex Kementan)
+ *   dan studi komposisi Pleurotus ostreatus internasional — tidak diubah.
+ * - kekeruhanAir: MASIH PLACEHOLDER, sengaja tidak diubah — riset literatur
+ *   compost leachate turbidity ternyata sangat bervariasi tergantung bahan
+ *   baku (27-3618 NTU di studi berbeda-beda), tidak ada korelasi baku
+ *   "kekeruhan X NTU = kelembapan Y%" yang ditemukan. Dipakai sebagai proxy
+ *   kelembapan/homogenitas campuran (makin keruh air rendaman/leachate =
+ *   makin banyak partikel organik terlarut), tapi angka 200-500 NTU murni
+ *   tebakan kasar — kalibrasi empiris di TASKPLAN.md Phase 6 jauh lebih
+ *   penting di sini dibanding parameter lain.
  */
 export const MIXING_THRESHOLDS = {
   pH: { min: 6.0, max: 7.0 },

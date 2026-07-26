@@ -26,10 +26,10 @@ describe("evaluateIncubationReadiness", () => {
     expect(result.anomaly).toBeNull();
   });
 
-  it("mengekspos threshold sesuai PRD (suhu 22-28, kelembapan 70-90, CO2 500-1500, cahaya 0-50)", () => {
+  it("mengekspos threshold sesuai PRD (suhu 22-28, kelembapan 70-90, CO2 500-5000, cahaya 0-50) — CO2 direvisi 2026-07-26 berdasar riset literatur, lihat PRD.md §13", () => {
     expect(INCUBATION_THRESHOLDS.suhu).toEqual({ min: 22, max: 28 });
     expect(INCUBATION_THRESHOLDS.kelembapan).toEqual({ min: 70, max: 90 });
-    expect(INCUBATION_THRESHOLDS.co2).toEqual({ min: 500, max: 1500 });
+    expect(INCUBATION_THRESHOLDS.co2).toEqual({ min: 500, max: 5000 });
     expect(INCUBATION_THRESHOLDS.cahaya).toEqual({ min: 0, max: 50 });
   });
 
@@ -97,11 +97,11 @@ describe("evaluateIncubationReadiness", () => {
     expect(result.anomaly?.isContamination).toBe(false);
   });
 
-  it("kontaminasi: lonjakan CO2 bersamaan penurunan kelembapan drastis", () => {
+  it("kontaminasi: lonjakan CO2 bersamaan kenaikan kelembapan drastis (kondisi stagnan, lihat PRD.md §13)", () => {
     const readings = series([
       { suhu: 25, kelembapan: 80, co2: 900, cahaya: 20 },
       { suhu: 25, kelembapan: 80, co2: 910, cahaya: 20 },
-      { suhu: 25, kelembapan: 68, co2: 1400, cahaya: 20 }, // CO2 +490, kelembapan -12
+      { suhu: 25, kelembapan: 92, co2: 1400, cahaya: 20 }, // CO2 +490, kelembapan +12
     ]);
 
     const result = evaluateIncubationReadiness(readings);

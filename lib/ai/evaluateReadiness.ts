@@ -12,6 +12,16 @@ export interface SensorReadingInput {
   kelembapan: number;
 }
 
+/**
+ * Riset literatur publik 2026-07-26 (lihat PRD.md §13):
+ * - kelembapan: 60-65% cocok literatur persiapan substrat Pleurotus
+ *   ostreatus (initial moisture 55-65%/60-65% di beberapa studi) — tidak diubah.
+ * - suhu: BELUM DIUBAH — masih ambigu proses fisik apa yang direpresentasikan
+ *   stage ini. Kalau curing/pengkondisian sebelum sterilisasi, 25-35°C (suhu
+ *   ruang) masuk akal. Kalau dimaksudkan pasteurisasi aktif, literatur bilang
+ *   butuh 60-77°C selama 1-2 jam — beda jauh dari threshold ini. Perlu
+ *   klarifikasi tim sebelum angka ini diubah, lihat PRD.md §13.
+ */
 export const THRESHOLDS = {
   suhu: { min: 25, max: 35 },
   kelembapan: { min: 60, max: 65 },
